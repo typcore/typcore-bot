@@ -28,7 +28,10 @@ TIMEOUT_MINUTOS = 30  # reseta conversa após inatividade
 
 async def enviar_mensagem(numero: str, texto: str):
     """Envia mensagem de texto via Evolution API."""
-    url = f"{EVOLUTION_URL}/message/sendText/{INSTANCE_NAME}"
+    # Forçamos a URL correta direto aqui para eliminar o erro de leitura do os.getenv
+    url_fixa = "https://evolution-api-production-8c70.up.railway.app"
+    
+    url = f"{url_fixa}/message/sendText/{INSTANCE_NAME}"
     payload = {
         "number": numero,
         "text":   texto,
