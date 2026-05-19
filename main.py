@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 # ── CONFIGURAÇÃO ─────────────────────────────────────────────
-EVOLUTION_URL    = os.getenv("EVOLUTION_URL", "http://localhost:8080")
+EVOLUTION_URL = os.getenv("EVOLUTION_URL", "http://localhost:8080").strip()
 EVOLUTION_APIKEY = os.getenv("EVOLUTION_APIKEY", "typcore-evolution-key")
 INSTANCE_NAME    = os.getenv("INSTANCE_NAME", "typcore")
 NUMERO_NOTIF     = os.getenv("NUMERO_NOTIF", "5511970667575")  # seu celular pessoal
