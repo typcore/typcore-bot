@@ -381,32 +381,55 @@ async def webhook(request: Request):
         if evento != "messages.upsert":
             return JSONResponse({"ok": True})
 
-        data = body.get("data", {})
+        # A Evolution envia os dados dentro de uma lista ou objeto. Vamos garantir o mapeamento:
+        data_payload = body.get("data", {})
+        
+        # Se vier como lista (padrão Baileys), pegamos o primeiro item
+        if isinstance(data_payload, list):
+            if not data_payload:
+                return JSONResponse({"ok": True})
+            data = data_payload[0]
+        else:
+            data = data_payload
 
         # Ignora mensagens enviadas pelo próprio bot
         if data.get("key", {}).get("fromMe"):
             return JSONResponse({"ok": True})
 
-        # Extrai número e texto
-        numero = data.get("key", {}).get("remoteJid", "").replace("@s.whatsapp.net", "")
-        if not numero or "@g.us" in data.get("key", {}).get("remoteJid", ""):
-            return JSONResponse({"ok": True})  # ignora grupos
+        remote_jid = data.get("key", {}).get("remoteJid", "")
+
+        # Validação crucial: Ignora se for grupo, lista de transmissão ou atualização de status
+        if not remote_jid or "@g.us" in remote_jid or "@broadcast" in remote_jid or "status@broadcast" in remote_jid:
+            return JSONResponse({"ok": True})
+
+        # Extrai número limpo
+        numero = remote_jid.split("@")[0]
 
         mensagem = data.get("message", {})
+        if not mensagem:
+            return JSONResponse({"ok": True})
+
+        # Captura texto de conversas normais, respondidas, mídias com legenda ou cliques em botões
         texto = (
             mensagem.get("conversation")
             or mensagem.get("extendedTextMessage", {}).get("text")
+            or mensagem.get("imageMessage", {}).get("caption")
+            or mensagem.get("videoMessage", {}).get("caption")
+            or mensagem.get("buttonsResponseMessage", {}).get("selectedButtonId")
+            or mensagem.get("templateButtonReplyMessage", {}).get("selectedId")
             or ""
         )
 
-        # Nome do contato
+        # Nome do contato que aparece no WhatsApp do cliente
         nome = data.get("pushName", "")
 
-        if texto:
+        # Só processa se o cliente de fato enviou algum texto ou comando
+        if texto.strip():
             await processar_mensagem(numero, texto, nome)
 
     except Exception as e:
-        print(f"ERRO webhook: {e}")
+        # Esse print vai direto para o Log do seu Railway facilitando o seu debug
+        print(f"ERRO webhook TypCore: {e}")
 
     return JSONResponse({"ok": True})
 
