@@ -29,7 +29,15 @@ def _normalizar_url(bruto: str, padrao: str) -> str:
     return u.rstrip("/")
 
 
-EVOLUTION_URL    = _normalizar_url(os.getenv("EVOLUTION_URL"), "http://localhost:8080")
+# Endereço da Evolution API deste projeto. Fica aqui como PADRÃO porque a
+# variável EVOLUTION_URL parou de chegar ao container em 23/09 (o /versao
+# mostrava "localhost:8080", que é o padrão antigo) e o bot ficou mudo sem
+# nenhum sintoma visível. "localhost" nunca serve em produção — este
+# endereço serve. A variável de ambiente continua tendo prioridade: se ela
+# existir e for válida, é ela que vale.
+EVOLUTION_URL_PADRAO = "https://evolution-api-production-8c70.up.railway.app"
+
+EVOLUTION_URL    = _normalizar_url(os.getenv("EVOLUTION_URL"), EVOLUTION_URL_PADRAO)
 EVOLUTION_APIKEY = os.getenv("EVOLUTION_APIKEY", "typcore-evolution-key")
 INSTANCE_NAME    = os.getenv("INSTANCE_NAME", "typcore")
 NUMERO_NOTIF     = os.getenv("NUMERO_NOTIF", "5511970667575")  # seu celular pessoal
@@ -569,7 +577,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "2.2.0"
+VERSAO = "2.4.0"
 
 
 @app.get("/")
@@ -600,7 +608,23 @@ def ver_versao():
             "url": EVOLUTION_URL,          # sem a apikey; só o endereço
             "instancia": INSTANCE_NAME,
             "url_valida": EVOLUTION_URL.startswith(("http://", "https://")),
+            "origem": ("variavel de ambiente" if os.getenv("EVOLUTION_URL")
+                       else "padrao do codigo"),
         },
+        # Diagnóstico: mostra os NOMES das variáveis que o container
+        # realmente enxerga. Só nomes — nenhum valor, para não vazar chave.
+        # Serve para pegar nome com caractere invisível ou parecido, que
+        # aparece normal no painel e não casa no os.getenv.
+        "env_encontradas": {
+            "EVOLUTION_URL": os.getenv("EVOLUTION_URL") is not None,
+            "EVOLUTION_APIKEY": os.getenv("EVOLUTION_APIKEY") is not None,
+            "INSTANCE_NAME": os.getenv("INSTANCE_NAME") is not None,
+            "NUMERO_NOTIF": os.getenv("NUMERO_NOTIF") is not None,
+        },
+        "nomes_parecidos": sorted(
+            repr(k) for k in os.environ
+            if any(p in k.upper() for p in ("EVOL", "INSTANC", "NUMERO", "APIKEY"))
+        ),
     }
 
 
