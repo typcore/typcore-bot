@@ -12,7 +12,24 @@ from fastapi.responses import JSONResponse
 import ia  # camada de IA (provedor trocável; desligada sem chave)
 
 # ── CONFIGURAÇÃO ─────────────────────────────────────────────
-EVOLUTION_URL    = os.getenv("EVOLUTION_URL", "http://localhost:8080")
+def _normalizar_url(bruto: str, padrao: str) -> str:
+    """Tolera valor mal formatado na variável de ambiente.
+
+    Já quebrou em produção com "Request URL is missing an 'http://' or
+    'https://' protocol": basta um espaço, uma quebra de linha ou a falta
+    do esquema para o httpx recusar. Em vez de derrubar o atendimento por
+    isso, normaliza aqui.
+    """
+    u = (bruto or "").strip().strip('"').strip("'")
+    u = u.replace("\n", "").replace("\r", "").replace(" ", "")
+    if not u:
+        return padrao
+    if not u.startswith(("http://", "https://")):
+        u = "https://" + u
+    return u.rstrip("/")
+
+
+EVOLUTION_URL    = _normalizar_url(os.getenv("EVOLUTION_URL"), "http://localhost:8080")
 EVOLUTION_APIKEY = os.getenv("EVOLUTION_APIKEY", "typcore-evolution-key")
 INSTANCE_NAME    = os.getenv("INSTANCE_NAME", "typcore")
 NUMERO_NOTIF     = os.getenv("NUMERO_NOTIF", "5511970667575")  # seu celular pessoal
@@ -552,7 +569,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "2.1.0"
+VERSAO = "2.2.0"
 
 
 @app.get("/")
@@ -579,6 +596,11 @@ def ver_versao():
             "produtos": len(base.get("produtos", [])),
         },
         "conversas_ativas": len(conversas),
+        "evolution": {
+            "url": EVOLUTION_URL,          # sem a apikey; só o endereço
+            "instancia": INSTANCE_NAME,
+            "url_valida": EVOLUTION_URL.startswith(("http://", "https://")),
+        },
     }
 
 
