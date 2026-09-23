@@ -1,0 +1,540 @@
+{
+ "planos": {
+  "sem": {
+   "nome": "Essencial",
+   "mensal": 89,
+   "trimestral": 79,
+   "anual": 69,
+   "para_quem": "Para clínicas, salões, petshops, pilates, quiropraxia, massoterapia e fisioterapia"
+  },
+  "uma": {
+   "nome": "Fiscal",
+   "mensal": 129,
+   "trimestral": 119,
+   "anual": 99,
+   "para_quem": "Para mercadinhos, lojas, mecânicas, celulares e informática — com NFC-e ou NFS-e"
+  },
+  "duas": {
+   "nome": "Fiscal Completo",
+   "mensal": 199,
+   "trimestral": 189,
+   "anual": 179,
+   "para_quem": "Para mecânicas, celulares e informática — com NFC-e e NFS-e incluídas"
+  }
+ },
+ "produtos": [
+  {
+   "id": "odonto",
+   "nome": "TypCore Odonto",
+   "emoji": "🦷",
+   "disponivel": true,
+   "plano": "sem",
+   "pagina": "typcore.com.br/odonto.html",
+   "descricao": "Sistema completo para clínicas odontológicas. Odontograma interativo, planos de tratamento, anamnese digital e NFS-e. 15 dias grátis.",
+   "recursos": [
+    "Odontograma Interativo: Mapa dental clicável com registro de condições por face do dente.",
+    "Prontuário Digital: Ficha completa com histórico de atendimentos e evolução do tratamento.",
+    "Agendamento: Agenda por dentista com especialidades e duração por procedimento.",
+    "Plano de Tratamento: Monte o plano de tratamento com valores e acompanhamento de execução.",
+    "Anamnese Digital: Formulário enviado via WhatsApp com respostas diretas no prontuário.",
+    "Financeiro Completo: Contas a receber, parcelamentos, convênios e fluxo de caixa.",
+    "NFS-e: Emissão de Nota Fiscal de Serviço diretamente pelo sistema.",
+    "Relatórios em PDF: Faturamento por procedimento e produtividade.",
+    "Backup: Backup do banco de dados com um clique.",
+    "Controle de Acesso: Níveis de acesso: administrador, dentista e recepção.",
+    "Aniversários: Alerta de aniversariantes para fidelização.",
+    "Acesso Móvel: Consulte agenda e pacientes pelo celular na rede Wi-Fi."
+   ],
+   "termos": [
+    "dentista",
+    "odonto",
+    "consultorio odontologico",
+    "dental",
+    "odontologia"
+   ]
+  },
+  {
+   "id": "estetica",
+   "nome": "TypCore Estética",
+   "emoji": "💅",
+   "disponivel": true,
+   "plano": "sem",
+   "pagina": "typcore.com.br/estetica.html",
+   "descricao": "Sistema completo para clínicas de estética. Sessões, agendamentos, anamneses, financeiro e estoque. 15 dias grátis.",
+   "recursos": [
+    "Agendamentos: Agenda completa com horários, especialidades, duração e status.",
+    "Controle de Sessões: Registre procedimentos, produtos usados, evolução clínica e avaliação.",
+    "Anamneses Online: Envie formulários via WhatsApp. As respostas chegam direto no sistema.",
+    "Cadastro de Pacientes: Ficha completa com CPF, histórico de sessões e anamneses.",
+    "Financeiro Completo: Contas a receber, a pagar, categorias e fluxo de caixa.",
+    "Estoque de Produtos: Controle de produtos usados e vendidos com alerta de estoque baixo.",
+    "Ponto de Venda: Venda produtos com desconto, forma de pagamento e comprovante em PDF.",
+    "Relatórios em PDF: Faturamento, atendimentos por especialidade e aniversariantes.",
+    "Controle de Acesso: Três níveis: administrador, operador e caixa.",
+    "Backup Automático: Backup com um clique. Seus dados sempre seguros.",
+    "Alerta de Aniversários: Dashboard mostra aniversariantes dos próximos 7 dias.",
+    "Acesso pelo Celular: Consulte agenda e financeiro pelo celular na rede Wi-Fi."
+   ],
+   "termos": [
+    "estetica",
+    "beleza",
+    "clinica de estetica",
+    "esteticista",
+    "harmonizacao"
+   ]
+  },
+  {
+   "id": "fisioterapia",
+   "nome": "TypCore Fisioterapia",
+   "emoji": "🏃",
+   "disponivel": true,
+   "plano": "sem",
+   "pagina": "typcore.com.br/fisioterapia.html",
+   "descricao": "Sistema completo para clínicas de fisioterapia. Prontuário, evolução de pacientes, agenda e financeiro. 15 dias grátis.",
+   "recursos": [
+    "Agendamento: Agenda por fisioterapeuta com especialidades e duração por tipo de sessão.",
+    "Prontuário Digital: Ficha completa com histórico de sessões, diagnóstico e evolução.",
+    "Anamnese: Formulário específico com histórico de saúde, dores e limitações.",
+    "Pacotes de Sessões: Controle de pacotes pré-pagos com saldo de sessões por paciente.",
+    "Financeiro: Contas a receber, convênios, comissões e fluxo de caixa.",
+    "NFS-e: Emissão de Nota Fiscal de Serviço diretamente pelo sistema.",
+    "Retenção: Alerta de pacientes sem sessão há mais de 30 dias.",
+    "Relatórios: Faturamento, produtividade e relatórios clínicos em PDF.",
+    "Backup: Backup com um clique. Seus dados sempre seguros.",
+    "Controle de Acesso: Perfis: administrador, fisioterapeuta e recepção.",
+    "Aniversários: Alerta de aniversariantes para fidelização.",
+    "Acesso Móvel: Consulte agenda e pacientes pelo celular na rede Wi-Fi."
+   ],
+   "termos": [
+    "fisio",
+    "fisioterapia",
+    "fisioterapeuta",
+    "reabilitacao"
+   ]
+  },
+  {
+   "id": "mercadinho",
+   "nome": "TypCore Mercadinho",
+   "emoji": "🛒",
+   "disponivel": true,
+   "plano": "uma",
+   "pagina": "typcore.com.br/mercadinho.html",
+   "descricao": "Sistema completo para mercadinhos e mercearias. PDV com código de barras, NFC-e, estoque e caixa. 15 dias grátis.",
+   "recursos": [
+    "PDV com Código de Barras: Frente de caixa com leitura de código de barras, busca por nome e atalhos de teclado.",
+    "Preço por Kg: Produtos vendidos por peso: informe o peso e o sistema calcula o valor automaticamente.",
+    "NFC-e: Emissão de Nota Fiscal do Consumidor diretamente no caixa.",
+    "Estoque Completo: Controle de entrada e saída com alerta de estoque mínimo por produto.",
+    "Controle de Vencimentos: Alerta de produtos vencidos e próximos do vencimento no dashboard.",
+    "Caixa: Abertura, fechamento, sangria, suprimento e relatório de caixa.",
+    "Clientes: Cadastro opcional de clientes com histórico de compras.",
+    "Fornecedores: Cadastro de fornecedores com histórico de compras.",
+    "Relatórios: Produtos mais vendidos, faturamento diário e mensal em PDF.",
+    "Backup: Backup com um clique. Seus dados sempre seguros.",
+    "Usuários: Controle de acesso por perfil: administrador e operador.",
+    "Acesso em Rede: Múltiplos caixas na mesma rede conectados ao mesmo banco."
+   ],
+   "termos": [
+    "mercadinho",
+    "mercearia",
+    "mercado",
+    "minimercado",
+    "adega",
+    "hortifruti"
+   ]
+  },
+  {
+   "id": "informatica",
+   "nome": "TypCore Informática",
+   "emoji": "💻",
+   "disponivel": true,
+   "plano": "uma",
+   "pagina": "typcore.com.br/informatica.html",
+   "descricao": "Sistema completo para assistências técnicas de informática. OS, PDV, NFC-e, NFS-e e controle financeiro. 15 dias grátis.",
+   "recursos": [
+    "Ordens de Serviço: OS completas com status, histórico por equipamento e cliente.",
+    "Orçamentos: Orçamentos detalhados com peças e mão de obra.",
+    "Estoque de Peças: Controle de peças, componentes e acessórios com alertas.",
+    "PDV / Caixa: Frente de caixa com abertura, fechamento e sangria.",
+    "NFC-e e NFS-e: Emissão de nota fiscal do consumidor e de serviço.",
+    "Financeiro: Contas a receber, a pagar e fluxo de caixa.",
+    "Clientes: Histórico completo de equipamentos, OS e pagamentos.",
+    "Foto de Entrada: Registre o estado do equipamento na entrada.",
+    "Relatórios em PDF: OS por período, faturamento e peças mais usadas.",
+    "Backup: Backup do banco com um clique.",
+    "Impressão de OS: OS em PDF para entregar ao cliente.",
+    "Acesso Móvel: Consulte OS pelo celular na rede Wi-Fi."
+   ],
+   "termos": [
+    "informatica",
+    "computador",
+    "notebook",
+    "assistencia de informatica",
+    "ti",
+    "pc"
+   ]
+  },
+  {
+   "id": "celulares",
+   "nome": "TypCore Celulares",
+   "emoji": "📱",
+   "disponivel": true,
+   "plano": "uma",
+   "pagina": "typcore.com.br/celulares.html",
+   "descricao": "Sistema completo para assistências técnicas de celulares. OS, PDV, orçamentos, estoque de peças, NFC-e e NFS-e. 15 dias grátis.",
+   "recursos": [
+    "Ordens de Serviço: Abertura, acompanhamento e encerramento de OS com status. Histórico por aparelho e cliente.",
+    "Orçamentos: Orçamentos com peças e mão de obra. Aprovação gera OS automaticamente.",
+    "Estoque de Peças: Controle de peças com entrada, saída e alerta de mínimo. Vínculo com as OS.",
+    "PDV / Caixa: Frente de caixa completa com abertura, fechamento, sangria e pagamento de OS.",
+    "NFC-e e NFS-e: Emissão de nota fiscal do consumidor e de serviço diretamente pelo sistema.",
+    "Financeiro: Contas a receber, a pagar, comissões e fluxo de caixa.",
+    "Clientes: Ficha com histórico de aparelhos, OS e pagamentos.",
+    "Foto de Entrada: Registre fotos do aparelho na entrada para documentar o estado recebido.",
+    "Relatórios em PDF: OS por período, peças mais usadas e faturamento.",
+    "Backup: Backup com um clique. Seus dados sempre seguros.",
+    "Impressão de OS: Imprima a OS em PDF para entregar ao cliente.",
+    "Acesso Móvel: Consulte OS e clientes pelo celular na rede Wi-Fi."
+   ],
+   "termos": [
+    "celular",
+    "smartphone",
+    "assistencia de celular",
+    "iphone",
+    "troca de tela"
+   ]
+  },
+  {
+   "id": "mecanica-carros",
+   "nome": "TypCore Mecânica Autos",
+   "emoji": "🔧",
+   "disponivel": false,
+   "plano": "duas",
+   "pagina": "typcore.com.br/mecanica-carros.html",
+   "descricao": "Sistema completo para mecânicas de automóveis. OS, orçamentos, peças, PDV, NFC-e e NFS-e. 15 dias grátis.",
+   "recursos": [
+    "Ordens de Serviço: Abertura, acompanhamento e encerramento de OS com status em tempo real.",
+    "Orçamentos: Crie orçamentos com peças e mão de obra. Aprovação gera OS automaticamente.",
+    "Peças & Estoque: Controle de peças com entrada, saída, reserva e alerta de mínimo.",
+    "PDV / Caixa: Frente de caixa completa com abertura, fechamento e sangria.",
+    "NFC-e e NFS-e: Emissão de nota fiscal do consumidor e de serviço pelo sistema.",
+    "Financeiro: Contas a receber, a pagar, comissões e fluxo de caixa.",
+    "Cadastro de Clientes: Ficha completa com histórico de veículos, OS e pagamentos.",
+    "Histórico por Veículo: Digite a placa e veja todas as OS, peças e serviços — de anos atrás. Ver como funciona ↑",
+    "Relatórios em PDF: OS por período, faturamento e peças mais usadas.",
+    "Backup Automático: Backup com um clique. Seus dados sempre seguros.",
+    "Impressão de OS: Imprima a OS em PDF para entregar ao cliente.",
+    "Acesso pelo Celular: Consulte OS e financeiro pelo celular na rede Wi-Fi."
+   ],
+   "termos": [
+    "mecanica",
+    "oficina",
+    "carro",
+    "automovel",
+    "auto eletrica",
+    "funilaria"
+   ]
+  },
+  {
+   "id": "mecanica-motos",
+   "nome": "TypCore Mecânica Motos",
+   "emoji": "🏍️",
+   "disponivel": false,
+   "plano": "duas",
+   "pagina": "typcore.com.br/mecanica-motos.html",
+   "descricao": "Sistema completo para mecânicas de motos. OS, orçamentos, peças, PDV, NFC-e e NFS-e. 15 dias grátis.",
+   "recursos": [
+    "Ordens de Serviço: Abertura, acompanhamento e encerramento de OS com status em tempo real.",
+    "Orçamentos: Crie orçamentos com peças e mão de obra. Aprovação gera OS automaticamente.",
+    "Peças & Estoque: Controle de peças com entrada, saída, reserva e alerta de mínimo.",
+    "PDV / Caixa: Frente de caixa completa com abertura, fechamento e sangria.",
+    "NFC-e e NFS-e: Emissão de nota fiscal do consumidor e de serviço pelo sistema.",
+    "Financeiro: Contas a receber, a pagar, comissões e fluxo de caixa.",
+    "Cadastro de Clientes: Ficha completa com histórico de motos, OS e pagamentos.",
+    "Histórico por Moto: Digite a placa e veja todas as OS, peças e serviços — de anos atrás. Ver como funciona ↑",
+    "Relatórios em PDF: OS por período, faturamento e peças mais usadas.",
+    "Backup Automático: Backup com um clique. Seus dados sempre seguros.",
+    "Impressão de OS: Imprima a OS em PDF para entregar ao cliente.",
+    "Acesso pelo Celular: Consulte OS e financeiro pelo celular na rede Wi-Fi."
+   ],
+   "termos": [
+    "moto",
+    "motocicleta",
+    "oficina de moto",
+    "mecanica de moto"
+   ]
+  },
+  {
+   "id": "lojas",
+   "nome": "TypCore Lojas",
+   "emoji": "👗",
+   "disponivel": false,
+   "plano": "uma",
+   "pagina": "typcore.com.br/lojas.html",
+   "descricao": "Sistema completo para lojas de varejo. PDV com grade, crediário, etiquetas e NFC-e. 15 dias grátis.",
+   "recursos": [
+    "PDV Completo: Frente de caixa com leitor de código de barras, desconto e NFC-e.",
+    "Grade de Produtos: Controle de estoque por tamanho (P/M/G/GG) e cor com seletor visual.",
+    "Etiquetas: Impressão de etiquetas com código de barras.",
+    "Crediário Próprio: Venda parcelada no crediário com controle de parcelas e vencimentos.",
+    "Fidelidade: Programa de pontos: R$ 1 = 1 ponto. Resgate como desconto.",
+    "Clientes: Cadastro com histórico de compras, crediário e pontos.",
+    "Estoque Completo: Controle de entrada, saída e inventário com alertas de mínimo.",
+    "Financeiro: Caixa, contas a receber, crediário e relatórios.",
+    "Relatórios: Produtos mais vendidos, faturamento e ticket médio em PDF."
+   ],
+   "termos": [
+    "loja",
+    "roupa",
+    "boutique",
+    "vestuario",
+    "confeccao"
+   ]
+  },
+  {
+   "id": "salao",
+   "nome": "TypCore Salão & Barbearia",
+   "emoji": "✂️",
+   "disponivel": false,
+   "plano": "sem",
+   "pagina": "typcore.com.br/salao.html",
+   "descricao": "Sistema para salões de cabeleireiro e barbearias. Agendamento, comandas, comissões e financeiro.",
+   "recursos": [
+    "Agendamento: Agenda por profissional com horários, serviços e duração estimada.",
+    "Comandas: Comanda digital por atendimento com serviços, produtos e pagamento.",
+    "Comissões: Cálculo automático de comissões por profissional.",
+    "Cadastro de Clientes: Ficha com histórico de serviços, preferências e aniversário.",
+    "Estoque de Produtos: Controle de produtos usados e vendidos com alerta de mínimo.",
+    "Venda de Produtos: Venda direta com desconto e comprovante.",
+    "Financeiro: Faturamento, contas a receber, a pagar e fechamento diário.",
+    "Aniversários: Alerta de aniversariantes para fidelização.",
+    "Relatórios: Serviços mais realizados e faturamento por profissional em PDF."
+   ],
+   "termos": [
+    "salao",
+    "barbearia",
+    "cabeleireiro",
+    "barbeiro",
+    "manicure"
+   ]
+  },
+  {
+   "id": "veterinaria",
+   "nome": "TypCore Veterinária",
+   "emoji": "🐾",
+   "disponivel": false,
+   "plano": "sem",
+   "pagina": "typcore.com.br/veterinaria.html",
+   "descricao": "Sistema para clínicas veterinárias. Prontuário, vacinas, internações e financeiro.",
+   "recursos": [
+    "Prontuário Digital: Ficha completa do animal com histórico de consultas, exames e diagnósticos.",
+    "Controle de Vacinas: Carteirinha digital com alertas de reforços e vermifugações.",
+    "Agendamento: Agenda com consultas, retornos, banho, tosa e cirurgias.",
+    "Internações: Controle de animais internados com evolução e medicações.",
+    "Cadastro de Animais: Ficha com espécie, raça, idade e múltiplos animais por tutor.",
+    "Estoque de Medicamentos: Controle com validade, lote e alerta de estoque mínimo.",
+    "Financeiro: Faturamento por consulta, contas a receber e fluxo de caixa.",
+    "Fornecedores: Cadastro de fornecedores de medicamentos e insumos.",
+    "Relatórios: Procedimentos mais realizados e faturamento mensal em PDF."
+   ],
+   "termos": [
+    "veterinaria",
+    "veterinario",
+    "clinica veterinaria"
+   ]
+  },
+  {
+   "id": "petshop",
+   "nome": "TypCore Petshop",
+   "emoji": "🐶",
+   "disponivel": false,
+   "plano": "sem",
+   "pagina": "typcore.com.br/petshop.html",
+   "descricao": "Sistema para petshops. Agenda de banho e tosa, carteira de vacinas, PDV e financeiro.",
+   "recursos": [
+    "Agendamento: Agenda de banho, tosa, consultas e procedimentos por pet.",
+    "Cadastro de Pets: Ficha do animal com raça, idade, vacinas e histórico.",
+    "Carteira de Vacinas: Controle de vacinas e vermifugação com alertas de reforços.",
+    "PDV / Loja: Venda de rações, acessórios e produtos com controle de estoque.",
+    "Estoque: Controle completo de produtos com alerta de estoque mínimo.",
+    "Financeiro: Contas a receber, fluxo de caixa e relatórios financeiros.",
+    "Fornecedores: Cadastro de fornecedores de rações, medicamentos e acessórios.",
+    "Aniversários: Alerta de aniversário dos pets para envio de promoções especiais.",
+    "Relatórios: Serviços mais realizados, produtos mais vendidos e faturamento em PDF."
+   ],
+   "termos": [
+    "petshop",
+    "pet shop",
+    "banho e tosa",
+    "pet"
+   ]
+  },
+  {
+   "id": "pilates",
+   "nome": "TypCore Pilates",
+   "emoji": "🧘",
+   "disponivel": false,
+   "plano": "sem",
+   "pagina": "typcore.com.br/pilates.html",
+   "descricao": "Sistema para estúdios de pilates. Agenda de aulas, controle de alunos, pacotes e financeiro.",
+   "recursos": [
+    "Agenda de Aulas: Controle de aulas individuais e em grupo com capacidade máxima por sala.",
+    "Cadastro de Alunos: Ficha completa com histórico de aulas, evolução e anamnese específica.",
+    "Prontuário: Registro de evolução por sessão com objetivos e técnicas.",
+    "Pacotes de Aulas: Pacotes mensais ou por quantidade com controle de saldo de aulas.",
+    "Comissões: Cálculo automático de comissões por instrutor.",
+    "Financeiro: Mensalidades, contas a receber, inadimplência e fluxo de caixa.",
+    "Retenção: Alerta de alunos sem aula há mais de 30 dias.",
+    "Relatórios: Ocupação por horário e faturamento por instrutor em PDF.",
+    "Fornecedores: Cadastro de fornecedores de equipamentos e acessórios."
+   ],
+   "termos": [
+    "pilates",
+    "studio de pilates"
+   ]
+  },
+  {
+   "id": "quiropraxia",
+   "nome": "TypCore Quiropraxia",
+   "emoji": "🧑‍⚕️",
+   "disponivel": false,
+   "plano": "sem",
+   "pagina": "typcore.com.br/quiropraxia.html",
+   "descricao": "Sistema completo para clínicas de quiropraxia. Prontuário, avaliação postural, agendamento e financeiro.",
+   "recursos": [
+    "Agendamento Completo: Agenda com múltiplos quiropraxistas e salas de atendimento.",
+    "Prontuário Digital: Ficha completa com histórico de sessões, queixas e evolução.",
+    "Avaliação Postural: Registro de avaliação postural com fotos antes e depois.",
+    "Cadastro de Pacientes: Ficha com histórico médico, diagnóstico e atendimentos.",
+    "Pacotes de Sessões: Controle de pacotes pré-pagos com saldo de sessões.",
+    "Financeiro Completo: Contas a receber, convênios, comissões e fluxo de caixa.",
+    "Retenção de Pacientes: Alerta de pacientes sem sessão há mais de 30 dias.",
+    "Relatórios em PDF: Faturamento e produtividade por profissional.",
+    "Fornecedores: Cadastro de fornecedores de produtos e equipamentos."
+   ],
+   "termos": [
+    "quiropraxia",
+    "quiropraxista"
+   ]
+  },
+  {
+   "id": "massoterapia",
+   "nome": "TypCore Massoterapia",
+   "emoji": "💆",
+   "disponivel": false,
+   "plano": "sem",
+   "pagina": "typcore.com.br/massoterapia.html",
+   "descricao": "Sistema para massoterapeutas. Agenda, prontuário, anamnese, pacotes de sessões e financeiro.",
+   "recursos": [
+    "Agendamento: Agenda completa por massoterapeuta com duração por tipo de massagem.",
+    "Prontuário Digital: Ficha do cliente com histórico de sessões, técnicas aplicadas e evolução.",
+    "Anamnese: Formulário com histórico de saúde e contraindicações.",
+    "Pacotes de Sessões: Controle de pacotes pré-pagos com saldo de sessões por cliente.",
+    "Caixa/PDV: Venda de óleos, cremes e produtos diretamente na recepção.",
+    "Financeiro: Contas a receber, comissões, convênios e fluxo de caixa.",
+    "Retenção: Alerta de clientes sem sessão há mais de 30 dias.",
+    "Relatórios: Faturamento por técnica, produtividade e relatórios em PDF.",
+    "Fornecedores: Cadastro de fornecedores de óleos, cremes e equipamentos."
+   ],
+   "termos": [
+    "massagem",
+    "massoterapia",
+    "massoterapeuta"
+   ]
+  },
+  {
+   "id": "imoveis",
+   "nome": "TypCore Imóveis",
+   "emoji": "🏠",
+   "disponivel": false,
+   "plano": "sem",
+   "pagina": "typcore.com.br/imoveis.html",
+   "descricao": "Sistema de gestão para imobiliárias. Contratos, locações, recibos e integração com Asaas para boletos.",
+   "recursos": [
+    "Contratos: Gestão de contratos de locação com vencimentos, reajustes e renovações.",
+    "Financeiro: Controle de recebimentos, inadimplência e repasse para proprietários.",
+    "Imóveis: Cadastro de imóveis com fotos, características e histórico.",
+    "Inquilinos e Proprietários: Fichas completas com histórico, documentos e contatos.",
+    "Boletos: Integração com Asaas para emissão de boletos bancários.",
+    "Alertas: Avisos de vencimento, reajuste e rescisão por WhatsApp.",
+    "Relatórios: Faturamento, inadimplência e carteira de imóveis em PDF.",
+    "Backup: Backup com um clique. Seus dados sempre seguros.",
+    "Controle de Acesso: Perfis: administrador, corretor e financeiro."
+   ],
+   "termos": [
+    "imoveis",
+    "imobiliaria",
+    "aluguel",
+    "locacao",
+    "corretor"
+   ]
+  },
+  {
+   "id": "motofrete",
+   "nome": "TypCore Moto Frete",
+   "emoji": "🛵",
+   "disponivel": false,
+   "plano": "sem",
+   "pagina": "typcore.com.br/motofrete.html",
+   "descricao": "Sistema de gestão para empresas de moto frete. Controle de entregas, motoboys, rastreamento GPS e financeiro.",
+   "recursos": [
+    "Controle de Entregas: Cadastro e acompanhamento de entregas com status em tempo real.",
+    "Motoboys: Cadastro de entregadores com histórico, comissões e produtividade.",
+    "Rastreamento GPS: Acompanhe a localização dos motoboys em tempo real pelo celular.",
+    "Financeiro: Controle de recebimentos, comissões e fluxo de caixa.",
+    "App do Motoboy: PWA para o entregador aceitar e atualizar status das entregas.",
+    "Clientes: Cadastro de clientes com histórico de pedidos e endereços frequentes.",
+    "Relatórios: Entregas por período, produtividade e faturamento em PDF.",
+    "Backup: Backup com um clique. Seus dados sempre seguros.",
+    "Notificações: Aviso ao cliente quando a entrega sair para entrega."
+   ],
+   "termos": [
+    "motoboy",
+    "entrega",
+    "frete",
+    "delivery",
+    "motofrete"
+   ]
+  },
+  {
+   "id": "comercio-servicos",
+   "nome": "TypCore Comércio & Serviços",
+   "emoji": "🏪",
+   "disponivel": false,
+   "plano": "uma",
+   "pagina": "typcore.com.br/comercio-servicos.html",
+   "descricao": "Sistema completo para empresas de comércio e serviços. Ordem de serviço, PDV, estoque, NFC-e, NFS-e e financeiro. 15 dias grátis.",
+   "recursos": [
+    "Ordens de Serviço: OS completas com status, histórico por equipamento e cliente.",
+    "Orçamentos: Orçamentos detalhados com peças e mão de obra.",
+    "Estoque de Produtos: Controle de peças, componentes e acessórios com alertas.",
+    "PDV / Caixa: Frente de caixa com abertura, fechamento e sangria.",
+    "NFC-e e NFS-e: Emissão de nota fiscal do consumidor e de serviço.",
+    "Financeiro: Contas a receber, a pagar e fluxo de caixa.",
+    "Clientes: Histórico completo de equipamentos, OS e pagamentos.",
+    "Foto de Entrada: Registre o estado do equipamento na entrada.",
+    "Relatórios em PDF: OS por período, faturamento e peças mais usadas.",
+    "Backup: Backup do banco com um clique.",
+    "Impressão de OS: OS em PDF para entregar ao cliente.",
+    "Acesso Móvel: Consulte OS pelo celular na rede Wi-Fi."
+   ],
+   "termos": [
+    "comercio",
+    "prestador de servico",
+    "loja em geral"
+   ]
+  }
+ ],
+ "fatos": {
+  "trial": "15 dias grátis, sem cartão de crédito",
+  "computadores": "Cada licença vale para até 3 computadores",
+  "fidelidade": "Sem fidelidade e sem taxa de implantação. Cancela quando quiser",
+  "instalacao": "Sistema desktop, instalado no computador da loja. Os dados ficam com o cliente, não na nuvem",
+  "suporte": "Suporte humano pelo WhatsApp, direto com quem desenvolve",
+  "backup": "Backup com 1 clique",
+  "atualizacoes": "Atualizações incluídas no plano",
+  "fiscal": "NFC-e e NFS-e integradas, sem precisar de software fiscal separado",
+  "site": "typcore.com.br",
+  "whatsapp": "(11) 91442-7508"
+ }
+}

@@ -9,6 +9,8 @@ from datetime import datetime
 from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
+import ia  # camada de IA (provedor trocável; desligada sem chave)
+
 # ── CONFIGURAÇÃO ─────────────────────────────────────────────
 EVOLUTION_URL    = os.getenv("EVOLUTION_URL", "http://localhost:8080")
 EVOLUTION_APIKEY = os.getenv("EVOLUTION_APIKEY", "typcore-evolution-key")
@@ -216,6 +218,26 @@ Ainda tem dúvidas?
 
 # ── MÁQUINA DE ESTADOS ───────────────────────────────────────
 
+# Sinais de que a mensagem é SUPORTE de quem já é cliente. Essas conversas
+# não passam pela IA de propósito: é onde a pessoa descreve o negócio dela
+# em detalhe, e onde resposta inventada custa mais caro. Verificar pelo
+# TEXTO (e não pelo estado) é essencial — com IA ativa o cliente escreve
+# "meu sistema não abre" direto, sem passar pelo menu.
+SINAIS_SUPORTE = (
+    "nao abre", "não abre", "nao funciona", "não funciona", "travou", "travando",
+    "parou de funcionar", "deu erro", "erro ", "bug", "falha", "nao consigo",
+    "não consigo", "nao entra", "não entra", "fechou sozinho", "sumiu",
+    "perdi", "backup", "banco de dados", "mariadb", "serial", "licenca",
+    "licença", "ativar", "ativacao", "ativação", "nao imprime", "não imprime",
+    "nota nao sai", "nota não sai", "rejeitada", "sefaz",
+)
+
+
+def parece_suporte(texto: str) -> bool:
+    t = texto.lower()
+    return any(s in t for s in SINAIS_SUPORTE)
+
+
 def get_conversa(numero: str) -> dict:
     agora = datetime.utcnow()
     if numero in conversas:
@@ -230,6 +252,10 @@ def get_conversa(numero: str) -> dict:
             "nome":      "",
             "ultima_msg": "",
             "ultima":    agora,
+            # Histórico só para dar contexto à IA. Vive em memória e some
+            # a cada deploy do Railway — aceitável porque a conversa
+            # também expira em TIMEOUT_MINUTOS.
+            "historico": [],
         }
     return conversas[numero]
 
@@ -244,6 +270,49 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
         conv["nome"] = nome_contato.split()[0]  # primeiro nome
 
     estado = conv["estado"]
+
+    # ── CAMINHO COM IA ─────────────────────────────────────────
+    # Atende em texto livre quando: há IA configurada, o cliente NÃO está
+    # num fluxo determinístico (suporte/ativação/aguardando humano) e ele
+    # não digitou só um número de menu.
+    #
+    # Suporte técnico fica DE FORA de propósito: é onde o cliente descreve
+    # o negócio dele em detalhe, e onde uma resposta inventada custa caro.
+    so_numero = texto.isdigit() or texto.lower() in ("menu", "0")
+    fluxo_fixo = estado in ("suporte", "ativacao", "aguardando_humano",
+                            "suporte_resolvido", "precos")
+
+    # Suporte detectado pelo texto: desvia para o fluxo determinístico
+    # ANTES de qualquer coisa sair para o provedor de IA.
+    if not so_numero and not fluxo_fixo and parece_suporte(texto):
+        conv["estado"] = "suporte"
+        await enviar_mensagem(numero, MENU_SUPORTE)
+        return
+
+    if ia.ia_ativa() and not so_numero and not fluxo_fixo:
+        conv["historico"].append({"quem": "cliente", "texto": texto})
+        conv["historico"] = conv["historico"][-12:]  # janela curta
+
+        resposta, escalar = await ia.responder(conv["historico"])
+
+        if resposta:
+            conv["historico"].append({"quem": "bot", "texto": resposta})
+            conv["estado"] = "ia"
+            await enviar_mensagem(numero, resposta)
+            if escalar:
+                conv["estado"] = "aguardando_humano"
+                await notificar_atendente(numero, conv["nome"], conv["ultima_msg"])
+            return
+        # resposta vazia = IA indisponível: segue para o menu de sempre,
+        # em vez de deixar o cliente sem resposta.
+        if escalar:
+            conv["estado"] = "aguardando_humano"
+            await notificar_atendente(numero, conv["nome"], conv["ultima_msg"])
+            await enviar_mensagem(numero, (
+                "Vou chamar alguém para te atender melhor. 👍\n\n"
+                "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
+            ))
+            return
 
     # ── INICIO ──
     if estado == "inicio":
@@ -392,6 +461,12 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
             ))
         else:
             await enviar_mensagem(numero, "Opção inválida.\n\n" + MENU_PRECOS)
+        return
+
+    # ── ESTADO IA (cliente digitou número ou "menu") ──
+    if estado == "ia":
+        conv["estado"] = "menu"
+        await enviar_mensagem(numero, MENU_PRINCIPAL)
         return
 
     # ── AGUARDANDO HUMANO ──
