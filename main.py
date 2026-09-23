@@ -10,7 +10,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 # ── CONFIGURAÇÃO ─────────────────────────────────────────────
-EVOLUTION_URL = os.getenv("EVOLUTION_URL", "http://localhost:8080").strip()
+EVOLUTION_URL    = os.getenv("EVOLUTION_URL", "http://localhost:8080")
 EVOLUTION_APIKEY = os.getenv("EVOLUTION_APIKEY", "typcore-evolution-key")
 INSTANCE_NAME    = os.getenv("INSTANCE_NAME", "typcore")
 NUMERO_NOTIF     = os.getenv("NUMERO_NOTIF", "5511970667575")  # seu celular pessoal
@@ -28,10 +28,7 @@ TIMEOUT_MINUTOS = 30  # reseta conversa após inatividade
 
 async def enviar_mensagem(numero: str, texto: str):
     """Envia mensagem de texto via Evolution API."""
-    # Forçamos a URL correta direto aqui para eliminar o erro de leitura do os.getenv
-    url_fixa = "https://evolution-api-production-8c70.up.railway.app"
-    
-    url = f"{url_fixa}/message/sendText/{INSTANCE_NAME}"
+    url = f"{EVOLUTION_URL}/message/sendText/{INSTANCE_NAME}"
     payload = {
         "number": numero,
         "text":   texto,
@@ -89,27 +86,41 @@ Selecione o assunto:
 
 0️⃣  ← Voltar ao menu principal"""
 
+# ATENCAO: estes valores tem de bater com window.TYPCORE.tiers do site
+# (typcore.com.br). Mexeu no preco la, atualize AQUI tambem — hoje sao
+# duas fontes separadas. Conferido em 23/09/2026.
 MENU_PRECOS = """\
 *Planos TypCore* 💼
 
-Todos os sistemas possuem os seguintes planos:
+O preço depende da nota fiscal que o seu negócio emite:
 
-• *Trial* — 15 dias grátis, sem cartão
-• *Mensal* — R$ 149/mês
-• *Trimestral* — R$ 399 (economia de 11%)
-• *Anual* — R$ 1.399 (economia de 22%)
+*Essencial* — sem nota fiscal
+R$ 89/mês · R$ 79 no trimestral · R$ 69 no anual
+_Clínicas, salões, petshops, pilates, fisioterapia_
 
-Sistemas disponíveis:
-🌸 TypCore Estética
-🦷 TypCore Odonto
-🛒 TypCore Mercadinho
-🔧 TypCore Mecânica
-📱 TypCore Celulares
+*Fiscal* — com NFC-e ou NFS-e
+R$ 129/mês · R$ 119 no trimestral · R$ 99 no anual
+_Mercadinhos, lojas, mecânicas, celulares, informática_
 
-Para contratar ou tirar dúvidas, selecione:
+*Fiscal Completo* — NFC-e e NFS-e
+R$ 199/mês · R$ 189 no trimestral · R$ 179 no anual
+_Para quem emite os dois tipos de nota_
+
+Todos incluem: até 3 computadores, suporte no WhatsApp,
+atualizações e backup. Sem fidelidade e sem taxa de implantação.
+
+🎁 *15 dias grátis, sem cartão.*
+
+*Disponíveis agora:*
+🦷 Odonto · 💅 Estética · 🏃 Fisioterapia
+🛒 Mercadinho · 💻 Informática · 📱 Celulares
+
+*Em breve:* Mecânica (Autos e Motos), Lojas, Salão,
+Veterinária, Petshop, Pilates e outros.
 
 1️⃣  Quero contratar
 2️⃣  Tenho dúvidas sobre os planos
+3️⃣  Não sei qual plano é o meu
 0️⃣  ← Voltar ao menu principal"""
 
 RESPOSTAS_SUPORTE = {
@@ -171,16 +182,30 @@ Isso resolveu?
 2️⃣  Não, preciso de mais ajuda
 0️⃣  ← Voltar ao menu""",
 
+    # Os links abaixo foram conferidos em 23/09/2026 (todos respondem 200).
+    # O caminho antigo /manuais/ estava dando 404 — o correto e /downloads/.
     "4": """\
 *Dúvidas sobre funcionalidades* 📖
 
-Você pode consultar o manual do sistema:
+Baixe o manual do seu sistema:
 
-• 📄 Manual TypCore Estética:
-  typcore.com.br/manuais/Manual_TypCore_Estetica_v2.pdf
+🦷 Odonto
+typcore.com.br/downloads/Manual_TypCore_Odonto.pdf
 
-• 📹 Tutoriais em vídeo:
-  Em breve em nosso site
+💅 Estética
+typcore.com.br/downloads/Manual_TypCore_Estetica.pdf
+
+🏃 Fisioterapia
+typcore.com.br/downloads/Manual_TypCore_Fisioterapia.pdf
+
+🛒 Mercadinho
+typcore.com.br/downloads/Manual_TypCore_Mercadinho.pdf
+
+💻 Informática
+typcore.com.br/downloads/Manual_TypCore_Informatica.pdf
+
+📱 Celulares
+typcore.com.br/downloads/Manual_TypCore_Celulares.pdf
 
 Ainda tem dúvidas?
 
@@ -350,6 +375,21 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
                 "apresentar a melhor opção para o seu negócio. 😊\n\n"
                 "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
             ))
+        elif texto == "3":
+            # Qual plano serve depende da nota que o negocio emite, e muita
+            # gente nao sabe responder isso sozinha. Em vez de arriscar um
+            # palpite, encaminha para uma pessoa — que e o que resolve.
+            conv["estado"] = "aguardando_humano"
+            await notificar_atendente(
+                numero, conv["nome"], "Não sabe qual plano — precisa de orientação fiscal")
+            await enviar_mensagem(numero, (
+                "Sem problema, isso é bem comum. 😊\n\n"
+                "O plano certo depende do tipo de nota que o seu negócio "
+                "precisa emitir, e isso muda conforme o ramo e o município.\n\n"
+                "Vou pedir para alguém te chamar e confirmar isso com você — "
+                "assim você não paga por nota que não usa.\n\n"
+                "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
+            ))
         else:
             await enviar_mensagem(numero, "Opção inválida.\n\n" + MENU_PRECOS)
         return
@@ -384,55 +424,32 @@ async def webhook(request: Request):
         if evento != "messages.upsert":
             return JSONResponse({"ok": True})
 
-        # A Evolution envia os dados dentro de uma lista ou objeto. Vamos garantir o mapeamento:
-        data_payload = body.get("data", {})
-        
-        # Se vier como lista (padrão Baileys), pegamos o primeiro item
-        if isinstance(data_payload, list):
-            if not data_payload:
-                return JSONResponse({"ok": True})
-            data = data_payload[0]
-        else:
-            data = data_payload
+        data = body.get("data", {})
 
         # Ignora mensagens enviadas pelo próprio bot
         if data.get("key", {}).get("fromMe"):
             return JSONResponse({"ok": True})
 
-        remote_jid = data.get("key", {}).get("remoteJid", "")
-
-        # Validação crucial: Ignora se for grupo, lista de transmissão ou atualização de status
-        if not remote_jid or "@g.us" in remote_jid or "@broadcast" in remote_jid or "status@broadcast" in remote_jid:
-            return JSONResponse({"ok": True})
-
-        # Extrai número limpo
-        numero = remote_jid.split("@")[0]
+        # Extrai número e texto
+        numero = data.get("key", {}).get("remoteJid", "").replace("@s.whatsapp.net", "")
+        if not numero or "@g.us" in data.get("key", {}).get("remoteJid", ""):
+            return JSONResponse({"ok": True})  # ignora grupos
 
         mensagem = data.get("message", {})
-        if not mensagem:
-            return JSONResponse({"ok": True})
-
-        # Captura texto de conversas normais, respondidas, mídias com legenda ou cliques em botões
         texto = (
             mensagem.get("conversation")
             or mensagem.get("extendedTextMessage", {}).get("text")
-            or mensagem.get("imageMessage", {}).get("caption")
-            or mensagem.get("videoMessage", {}).get("caption")
-            or mensagem.get("buttonsResponseMessage", {}).get("selectedButtonId")
-            or mensagem.get("templateButtonReplyMessage", {}).get("selectedId")
             or ""
         )
 
-        # Nome do contato que aparece no WhatsApp do cliente
+        # Nome do contato
         nome = data.get("pushName", "")
 
-        # Só processa se o cliente de fato enviou algum texto ou comando
-        if texto.strip():
+        if texto:
             await processar_mensagem(numero, texto, nome)
 
     except Exception as e:
-        # Esse print vai direto para o Log do seu Railway facilitando o seu debug
-        print(f"ERRO webhook TypCore: {e}")
+        print(f"ERRO webhook: {e}")
 
     return JSONResponse({"ok": True})
 
