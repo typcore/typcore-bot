@@ -529,14 +529,55 @@ async def webhook(request: Request):
     return JSONResponse({"ok": True})
 
 
+# Versão do código. Suba este número a cada alteração: é assim que se
+# confirma, de fora, QUAL código está rodando depois de um deploy.
+VERSAO = "2.0.0"
+
+
 @app.get("/")
 def root():
-    return {"status": "ok", "servico": "TypCore WhatsApp Bot"}
+    return {"status": "ok", "servico": "TypCore WhatsApp Bot", "versao": VERSAO}
+
+
+@app.get("/versao")
+def ver_versao():
+    """Diz o que está realmente no ar. Não expõe dado de cliente."""
+    base = ia.carregar_base()
+    return {
+        "versao": VERSAO,
+        "ia": {
+            "provedor": ia.IA_PROVEDOR,
+            "ativa": ia.ia_ativa(),
+            "modelo": (ia.GEMINI_MODELO if ia.IA_PROVEDOR == "gemini"
+                       else ia.ANTHROPIC_MODELO if ia.IA_PROVEDOR == "anthropic"
+                       else None),
+        },
+        "conhecimento": {
+            "carregado": bool(base),
+            "planos": len(base.get("planos", {})),
+            "produtos": len(base.get("produtos", [])),
+        },
+        "conversas_ativas": len(conversas),
+    }
 
 
 @app.get("/conversas")
-def ver_conversas():
-    """Endpoint de debug — mostra conversas ativas."""
+def ver_conversas(token: str = ""):
+    """Debug das conversas ativas.
+
+    PROTEGIDO: antes ficava aberto, e a URL do Railway é previsível — ou
+    seja, qualquer um lia telefone, nome e mensagens dos clientes. Agora
+    exige o token de ADMIN_TOKEN. Sem a variável definida, fica desligado
+    (fechado por padrão, e não aberto por padrão).
+    """
+    esperado = os.getenv("ADMIN_TOKEN", "")
+    if not esperado:
+        return JSONResponse(
+            {"erro": "Endpoint desativado. Defina ADMIN_TOKEN no Railway para usá-lo."},
+            status_code=403,
+        )
+    if token != esperado:
+        return JSONResponse({"erro": "Token inválido."}, status_code=403)
     return {
         k: {**v, "ultima": v["ultima"].isoformat()}
         for k, v in conversas.items()
