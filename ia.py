@@ -130,6 +130,9 @@ def montar_instrucao() -> str:
 # Nome do modelo resolvido em tempo de execução (ver _descobrir_modelo).
 _modelo_ok = None
 
+# Último erro da IA, exposto em /teste-ia para diagnóstico.
+ultimo_erro = None
+
 
 async def _descobrir_modelo() -> str:
     """Descobre um modelo válido na conta, em vez de depender de um nome fixo.
@@ -177,13 +180,41 @@ async def _gemini(instrucao: str, historico: list) -> str:
              "parts": [{"text": m["texto"]}]}
             for m in historico
         ],
-        "generationConfig": {"temperature": 0.6, "maxOutputTokens": 400},
+        "generationConfig": {
+            "temperature": 0.6,
+            # Folga generosa: os modelos 2.5+ gastam parte do orçamento
+            # "pensando" antes de escrever. Com teto baixo eles estouram o
+            # limite no raciocínio e devolvem resposta VAZIA.
+            "maxOutputTokens": 2048,
+            # Desliga o raciocínio interno: para responder sobre planos e
+            # produtos não é necessário, e ele só encarece e atrasa.
+            # Modelos que não suportam o campo simplesmente o ignoram.
+            "thinkingConfig": {"thinkingBudget": 0},
+        },
     }
     async with httpx.AsyncClient(timeout=TIMEOUT_IA) as c:
         r = await c.post(url, json=payload)
-        r.raise_for_status()
+        if r.status_code >= 400:
+            # Mostra o motivo real em vez de um erro genérico — foi a falta
+            # disso que escondeu o problema.
+            raise RuntimeError(f"HTTP {r.status_code}: {r.text[:400]}")
         d = r.json()
-    return d["candidates"][0]["content"]["parts"][0]["text"].strip()
+
+    cands = d.get("candidates") or []
+    if not cands:
+        raise RuntimeError(f"sem candidates: {str(d)[:300]}")
+
+    c0 = cands[0]
+    partes = (c0.get("content") or {}).get("parts") or []
+    # Ignora blocos de raciocínio; só interessa o texto para o cliente.
+    texto = "".join(pt.get("text", "") for pt in partes if not pt.get("thought"))
+
+    if not texto.strip():
+        raise RuntimeError(
+            f"resposta vazia (finishReason={c0.get('finishReason')}) "
+            f"usage={d.get('usageMetadata')}")
+
+    return texto.strip()
 
 
 async def _anthropic(instrucao: str, historico: list) -> str:
@@ -242,7 +273,9 @@ async def responder(historico: list):
         else:
             txt = await _anthropic(montar_instrucao(), limpo)
     except Exception as e:
-        print(f"[ia] falhou ({type(e).__name__}: {e}) — caindo no menu")
+        global ultimo_erro
+        ultimo_erro = f"{type(e).__name__}: {e}"
+        print(f"[ia] falhou ({ultimo_erro}) — caindo no menu")
         return None, False
 
     if not txt:

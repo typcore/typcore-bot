@@ -577,7 +577,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "2.5.0"
+VERSAO = "2.6.0"
 
 
 @app.get("/")
@@ -627,6 +627,32 @@ def ver_versao():
             repr(k) for k in os.environ
             if any(p in k.upper() for p in ("EVOL", "INSTANC", "NUMERO", "APIKEY"))
         ),
+    }
+
+
+@app.get("/teste-ia")
+async def teste_ia():
+    """Testa a IA com uma pergunta FIXA e mostra o resultado cru.
+
+    Pergunta fixa de propósito: assim o endpoint não vira um proxy de
+    LLM aberto para qualquer um usar às custas da cota.
+    Não expõe dado de cliente.
+    """
+    if not ia.ia_ativa():
+        return {"ok": False, "motivo": "IA desativada",
+                "provedor": ia.IA_PROVEDOR}
+
+    pergunta = "Quanto custa o sistema para uma assistência de informática?"
+    resposta, escalar = await ia.responder(
+        [{"quem": "cliente", "texto": pergunta}])
+
+    return {
+        "ok": resposta is not None,
+        "pergunta": pergunta,
+        "resposta": resposta,
+        "escalar": escalar,
+        "modelo_em_uso": getattr(ia, "_modelo_ok", None),
+        "ultimo_erro": getattr(ia, "ultimo_erro", None),
     }
 
 
