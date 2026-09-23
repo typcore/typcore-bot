@@ -32,7 +32,7 @@ from pathlib import Path
 
 IA_PROVEDOR = os.getenv("IA_PROVEDOR", "off").strip().lower()
 GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODELO = os.getenv("GEMINI_MODELO", "gemini-2.0-flash")
+GEMINI_MODELO = os.getenv("GEMINI_MODELO", "gemini-3.6-flash")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODELO = os.getenv("ANTHROPIC_MODELO", "claude-haiku-4-5-20251001")
 
@@ -134,19 +134,14 @@ _modelo_ok = None
 ultimo_erro = None
 
 
-async def _descobrir_modelo() -> str:
-    """Descobre um modelo válido na conta, em vez de depender de um nome fixo.
+async def _listar_candidatos() -> list:
+    """Modelos que valem a tentativa, do mais novo para o mais antigo.
 
-    Os IDs do Gemini mudam com frequência (2.0-flash, 2.5-flash-preview,
-    3-flash...). Um nome errado devolve 404 e o bot fica mudo — falha
-    exatamente igual à que custou o dia 23/09. Então: tenta o configurado
-    e, se não servir, pergunta à própria API quais existem e escolhe um
-    flash que suporte generateContent.
+    Não basta ler a lista da API: ela inclui modelos que aparecem mas
+    respondem 404 para contas novas (aconteceu com gemini-2.5-flash, que
+    mandava usar gemini-3.6-flash). Por isso devolvemos vários candidatos
+    e _gemini() tenta até um responder.
     """
-    global _modelo_ok
-    if _modelo_ok:
-        return _modelo_ok
-
     async with httpx.AsyncClient(timeout=TIMEOUT_IA) as c:
         r = await c.get(
             f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_KEY}")
@@ -156,21 +151,44 @@ async def _descobrir_modelo() -> str:
     nomes = [m["name"].split("/")[-1] for m in modelos
              if "generateContent" in m.get("supportedGenerationMethods", [])]
 
-    # 1) o que está configurado, se existir
-    if GEMINI_MODELO in nomes:
-        _modelo_ok = GEMINI_MODELO
-    else:
-        # 2) senão, o primeiro "flash" estável (evita preview/exp quando dá)
-        flash = [n for n in nomes if "flash" in n]
-        estavel = [n for n in flash if not any(x in n for x in ("preview", "exp", "thinking"))]
-        _modelo_ok = (estavel or flash or nomes or [GEMINI_MODELO])[0]
-        print(f"[ia] modelo {GEMINI_MODELO!r} indisponível; usando {_modelo_ok!r}")
+    def versao(n):
+        m = re.search(r"gemini-(\d+)(?:\.(\d+))?", n)
+        return (int(m.group(1)), int(m.group(2) or 0)) if m else (0, 0)
 
-    return _modelo_ok
+    flash = [n for n in nomes if "flash" in n]
+    # mais novos primeiro; estáveis antes de preview/exp
+    flash.sort(key=lambda n: (versao(n),
+                              0 if any(x in n for x in ("preview", "exp")) else 1),
+               reverse=True)
+
+    # o configurado tem prioridade, se existir
+    ordem = ([GEMINI_MODELO] if GEMINI_MODELO in nomes else []) + flash + nomes
+    vistos, saida = set(), []
+    for n in ordem:
+        if n not in vistos:
+            vistos.add(n); saida.append(n)
+    return saida[:6]
 
 
 async def _gemini(instrucao: str, historico: list) -> str:
-    modelo = await _descobrir_modelo()
+    global _modelo_ok
+    candidatos = [_modelo_ok] if _modelo_ok else await _listar_candidatos()
+    erros = []
+    for modelo in candidatos:
+        try:
+            texto = await _gemini_tentar(modelo, instrucao, historico)
+            if _modelo_ok != modelo:
+                print(f"[ia] usando modelo {modelo!r}")
+            _modelo_ok = modelo
+            return texto
+        except Exception as e:
+            erros.append(f"{modelo}: {e}")
+            _modelo_ok = None          # não fixa um modelo que falhou
+            continue
+    raise RuntimeError("nenhum modelo respondeu -> " + " | ".join(erros)[:500])
+
+
+async def _gemini_tentar(modelo: str, instrucao: str, historico: list) -> str:
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
            f"{modelo}:generateContent?key={GEMINI_KEY}")
     payload = {
