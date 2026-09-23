@@ -577,7 +577,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "2.4.0"
+VERSAO = "2.5.0"
 
 
 @app.get("/")
@@ -594,9 +594,11 @@ def ver_versao():
         "ia": {
             "provedor": ia.IA_PROVEDOR,
             "ativa": ia.ia_ativa(),
-            "modelo": (ia.GEMINI_MODELO if ia.IA_PROVEDOR == "gemini"
-                       else ia.ANTHROPIC_MODELO if ia.IA_PROVEDOR == "anthropic"
-                       else None),
+            "modelo_configurado": (ia.GEMINI_MODELO if ia.IA_PROVEDOR == "gemini"
+                                   else ia.ANTHROPIC_MODELO if ia.IA_PROVEDOR == "anthropic"
+                                   else None),
+            # Qual modelo a API aceitou de fato (só aparece após a 1ª resposta)
+            "modelo_em_uso": getattr(ia, "_modelo_ok", None),
         },
         "conhecimento": {
             "carregado": bool(base),

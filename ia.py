@@ -127,9 +127,49 @@ def montar_instrucao() -> str:
 
 
 # ── Provedores ───────────────────────────────────────────────
+# Nome do modelo resolvido em tempo de execução (ver _descobrir_modelo).
+_modelo_ok = None
+
+
+async def _descobrir_modelo() -> str:
+    """Descobre um modelo válido na conta, em vez de depender de um nome fixo.
+
+    Os IDs do Gemini mudam com frequência (2.0-flash, 2.5-flash-preview,
+    3-flash...). Um nome errado devolve 404 e o bot fica mudo — falha
+    exatamente igual à que custou o dia 23/09. Então: tenta o configurado
+    e, se não servir, pergunta à própria API quais existem e escolhe um
+    flash que suporte generateContent.
+    """
+    global _modelo_ok
+    if _modelo_ok:
+        return _modelo_ok
+
+    async with httpx.AsyncClient(timeout=TIMEOUT_IA) as c:
+        r = await c.get(
+            f"https://generativelanguage.googleapis.com/v1beta/models?key={GEMINI_KEY}")
+        r.raise_for_status()
+        modelos = r.json().get("models", [])
+
+    nomes = [m["name"].split("/")[-1] for m in modelos
+             if "generateContent" in m.get("supportedGenerationMethods", [])]
+
+    # 1) o que está configurado, se existir
+    if GEMINI_MODELO in nomes:
+        _modelo_ok = GEMINI_MODELO
+    else:
+        # 2) senão, o primeiro "flash" estável (evita preview/exp quando dá)
+        flash = [n for n in nomes if "flash" in n]
+        estavel = [n for n in flash if not any(x in n for x in ("preview", "exp", "thinking"))]
+        _modelo_ok = (estavel or flash or nomes or [GEMINI_MODELO])[0]
+        print(f"[ia] modelo {GEMINI_MODELO!r} indisponível; usando {_modelo_ok!r}")
+
+    return _modelo_ok
+
+
 async def _gemini(instrucao: str, historico: list) -> str:
+    modelo = await _descobrir_modelo()
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
-           f"{GEMINI_MODELO}:generateContent?key={GEMINI_KEY}")
+           f"{modelo}:generateContent?key={GEMINI_KEY}")
     payload = {
         "system_instruction": {"parts": [{"text": instrucao}]},
         "contents": [
