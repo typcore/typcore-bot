@@ -505,10 +505,31 @@ async def webhook(request: Request):
         if data.get("key", {}).get("fromMe"):
             return JSONResponse({"ok": True})
 
-        # Extrai número e texto
-        numero = data.get("key", {}).get("remoteJid", "").replace("@s.whatsapp.net", "")
-        if not numero or "@g.us" in data.get("key", {}).get("remoteJid", ""):
+        # ── Extrai o número de quem escreveu ──────────────────────
+        # O WhatsApp migrou para endereçamento LID: o remoteJid passou a vir
+        # como "87389766705237@lid", que NÃO é telefone e não serve para
+        # responder. Nesses casos o número real vem em "remoteJidAlt".
+        # Sem tratar isso, o bot recebe a mensagem, processa e tenta
+        # responder para um destinatário inexistente — falha silenciosa.
+        key = data.get("key", {})
+        jid = key.get("remoteJid", "") or ""
+
+        if "@g.us" in jid:
             return JSONResponse({"ok": True})  # ignora grupos
+
+        if jid.endswith("@lid"):
+            alt = key.get("remoteJidAlt") or ""
+            if not alt:
+                # Sem o alt não há como responder. Melhor registrar e sair
+                # do que enviar para um número inválido.
+                print(f"AVISO: mensagem LID sem remoteJidAlt ({jid}) — ignorada")
+                return JSONResponse({"ok": True})
+            jid = alt
+
+        numero = jid.replace("@s.whatsapp.net", "").replace("@c.us", "")
+        if not numero or not numero.isdigit():
+            print(f"AVISO: número não reconhecido a partir de {jid!r}")
+            return JSONResponse({"ok": True})
 
         mensagem = data.get("message", {})
         texto = (
@@ -531,7 +552,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "2.0.0"
+VERSAO = "2.1.0"
 
 
 @app.get("/")
