@@ -24,6 +24,7 @@ REGRA DE OURO:
   Inventar recurso que o ERP não tem gera reembolso e má reputação — é
   pior do que não responder.
 """
+import asyncio
 import os
 import re
 import json
@@ -32,13 +33,17 @@ from pathlib import Path
 
 IA_PROVEDOR = os.getenv("IA_PROVEDOR", "off").strip().lower()
 GEMINI_KEY = os.getenv("GEMINI_API_KEY", "")
-GEMINI_MODELO = os.getenv("GEMINI_MODELO", "gemini-3.6-flash")
+# Vazio de propósito: a ordenação escolhe o mais novo que funcionar.
+# Defina só se quiser forçar um modelo específico.
+GEMINI_MODELO = os.getenv("GEMINI_MODELO", "")
 ANTHROPIC_KEY = os.getenv("ANTHROPIC_API_KEY", "")
 ANTHROPIC_MODELO = os.getenv("ANTHROPIC_MODELO", "claude-haiku-4-5-20251001")
 
 # Teto de mensagens por conversa: impede que alguém consuma a cota à toa.
 MAX_TURNOS_IA = int(os.getenv("MAX_TURNOS_IA", "12"))
-TIMEOUT_IA = float(os.getenv("TIMEOUT_IA", "12"))
+# 12s era pouco: a primeira chamada, com a base de conhecimento
+# inteira no prompt, estourava e voltava erro VAZIO.
+TIMEOUT_IA = float(os.getenv("TIMEOUT_IA", "35"))
 
 _BASE = None
 
@@ -155,6 +160,14 @@ async def _listar_candidatos() -> list:
         m = re.search(r"gemini-(\d+)(?:\.(\d+))?", n)
         return (int(m.group(1)), int(m.group(2) or 0)) if m else (0, 0)
 
+    # Fora modelos que não servem para conversa em texto. Eles aparecem na
+    # lista e aceitam generateContent, mas recusam instrução de sistema
+    # ("Developer instruction is not enabled for this model") ou geram
+    # áudio/imagem. Sem este filtro, a fila desperdiça tentativas neles.
+    EXCLUIR = ("tts", "image", "audio", "embedding", "vision", "live",
+               "aqa", "learnlm", "veo", "imagen")
+    nomes = [n for n in nomes if not any(x in n.lower() for x in EXCLUIR)]
+
     flash = [n for n in nomes if "flash" in n]
     # mais novos primeiro; estáveis antes de preview/exp
     flash.sort(key=lambda n: (versao(n),
@@ -173,7 +186,7 @@ async def _listar_candidatos() -> list:
 async def _gemini(instrucao: str, historico: list) -> str:
     global _modelo_ok
     candidatos = [_modelo_ok] if _modelo_ok else await _listar_candidatos()
-    erros = []
+    erros, transitorios = [], []
     for modelo in candidatos:
         try:
             texto = await _gemini_tentar(modelo, instrucao, historico)
@@ -182,10 +195,25 @@ async def _gemini(instrucao: str, historico: list) -> str:
             _modelo_ok = modelo
             return texto
         except Exception as e:
-            erros.append(f"{modelo}: {e}")
+            msg = str(e) or f"{type(e).__name__} (sem detalhe)"
+            erros.append(f"{modelo}: {msg}")
+            if "503" in msg or "UNAVAILABLE" in msg:
+                transitorios.append(modelo)   # sobrecarga: vale tentar de novo
             _modelo_ok = None          # não fixa um modelo que falhou
             continue
-    raise RuntimeError("nenhum modelo respondeu -> " + " | ".join(erros)[:500])
+
+    # Segunda rodada só nos que falharam por sobrecarga momentânea.
+    for modelo in transitorios:
+        try:
+            await asyncio.sleep(1.5)
+            texto = await _gemini_tentar(modelo, instrucao, historico)
+            print(f"[ia] usando modelo {modelo!r} (2a tentativa)")
+            _modelo_ok = modelo
+            return texto
+        except Exception as e:
+            erros.append(f"{modelo} (retry): {str(e) or type(e).__name__}")
+
+    raise RuntimeError("nenhum modelo respondeu -> " + " | ".join(erros)[:600])
 
 
 async def _gemini_tentar(modelo: str, instrucao: str, historico: list) -> str:
