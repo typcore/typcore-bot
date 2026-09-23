@@ -134,6 +134,7 @@ def montar_instrucao() -> str:
 # ── Provedores ───────────────────────────────────────────────
 # Nome do modelo resolvido em tempo de execução (ver _descobrir_modelo).
 _modelo_ok = None
+_lista_cache = None
 
 # Último erro da IA, exposto em /teste-ia para diagnóstico.
 ultimo_erro = None
@@ -184,8 +185,24 @@ async def _listar_candidatos() -> list:
 
 
 async def _gemini(instrucao: str, historico: list) -> str:
-    global _modelo_ok
-    candidatos = [_modelo_ok] if _modelo_ok else await _listar_candidatos()
+    global _modelo_ok, _lista_cache
+
+    # A lista da API é buscada UMA vez e reaproveitada (evita um ida-e-volta
+    # extra a cada mensagem).
+    if _lista_cache is None:
+        _lista_cache = await _listar_candidatos()
+
+    # O modelo que já funcionou vira PREFERÊNCIA, não exclusividade.
+    # Antes eu tentava só ele — e quando ele ficava sobrecarregado (503), o
+    # bot desistia sem testar os outros da fila, que estavam disponíveis.
+    # A fila existe justamente para esse caso; travá-la no vencedor
+    # anulava o motivo de ela existir.
+    candidatos = list(_lista_cache)
+    if _modelo_ok and _modelo_ok in candidatos:
+        candidatos.remove(_modelo_ok)
+    if _modelo_ok:
+        candidatos.insert(0, _modelo_ok)
+
     erros, transitorios = [], []
     for modelo in candidatos:
         try:
@@ -199,7 +216,6 @@ async def _gemini(instrucao: str, historico: list) -> str:
             erros.append(f"{modelo}: {msg}")
             if "503" in msg or "UNAVAILABLE" in msg:
                 transitorios.append(modelo)   # sobrecarga: vale tentar de novo
-            _modelo_ok = None          # não fixa um modelo que falhou
             continue
 
     # Segunda rodada só nos que falharam por sobrecarga momentânea.
@@ -213,6 +229,10 @@ async def _gemini(instrucao: str, historico: list) -> str:
         except Exception as e:
             erros.append(f"{modelo} (retry): {str(e) or type(e).__name__}")
 
+    # Falhou a fila inteira: pode ser que a lista em cache tenha envelhecido
+    # (modelo descontinuado, conta com outro acesso). Invalida para a proxima
+    # mensagem buscar a lista nova em vez de insistir numa fila morta.
+    _lista_cache = None
     raise RuntimeError("nenhum modelo respondeu -> " + " | ".join(erros)[:600])
 
 

@@ -583,7 +583,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "2.9.0"
+VERSAO = "3.0.0"
 
 
 @app.get("/")
