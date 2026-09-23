@@ -328,16 +328,19 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
                 conv["estado"] = "aguardando_humano"
                 await notificar_atendente(numero, conv["nome"], conv["ultima_msg"])
             return
-        # resposta vazia = IA indisponível: segue para o menu de sempre,
-        # em vez de deixar o cliente sem resposta.
-        if escalar:
-            conv["estado"] = "aguardando_humano"
-            await notificar_atendente(numero, conv["nome"], conv["ultima_msg"])
-            await enviar_mensagem(numero, (
-                "Vou chamar alguém para te atender melhor. 👍\n\n"
-                "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
-            ))
-            return
+        # IA indisponível (sobrecarga do provedor, timeout, cota).
+        # NÃO devolver o menu: quem escreveu uma pergunta e recebe um menu
+        # numerado acha que não foi entendido. Uma pessoa assume a conversa.
+        conv["estado"] = "aguardando_humano"
+        await notificar_atendente(
+            numero, conv["nome"],
+            conv["ultima_msg"] + ("" if escalar else "  [IA indisponível]"))
+        await enviar_mensagem(numero, (
+            "Deixa eu chamar alguém para te responder direito. 👍\n\n"
+            "Já avisei aqui — em breve você recebe retorno.\n\n"
+            "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
+        ))
+        return
 
     # ── INICIO ──
     if estado == "inicio":
@@ -488,7 +491,10 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
             await enviar_mensagem(numero, "Opção inválida.\n\n" + MENU_PRECOS)
         return
 
-    # ── ESTADO IA (cliente digitou número ou "menu") ──
+    # ── ESTADO IA ──
+    # Só chega aqui quem digitou número ou "menu" estando na conversa com a
+    # IA — ou seja, pediu o menu de propósito. Texto livre não cai aqui:
+    # é tratado no bloco da IA lá em cima.
     if estado == "ia":
         conv["estado"] = "menu"
         await enviar_mensagem(numero, MENU_PRINCIPAL)
@@ -577,7 +583,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "2.8.0"
+VERSAO = "2.9.0"
 
 
 @app.get("/")
