@@ -97,6 +97,20 @@ async def enviar_mensagem(numero: str, texto: str):
 ultima_notificacao = {"quando": None, "para": None, "ok": None,
                       "auto_teste": None, "erro": None}
 
+# Numero do WhatsApp conectado na instancia, descoberto no 1o webhook.
+instancia_info = {"numero": None}
+
+
+def conflito_numero() -> bool:
+    """NUMERO_NOTIF aponta para o proprio bot?
+
+    Se sim, a notificacao e enviada para o bot ele mesmo: a Evolution
+    aceita, o /versao mostra ok=true, e o atendente nunca recebe nada.
+    E o unico modo de falha que parece sucesso — por isso vai explicito.
+    """
+    n = instancia_info["numero"]
+    return bool(n) and n == NUMERO_NOTIF
+
 
 async def notificar_atendente(numero_cliente: str, nome: str, ultima_msg: str):
     """Notifica o atendente humano quando cliente pede suporte."""
@@ -126,6 +140,13 @@ async def notificar_atendente(numero_cliente: str, nome: str, ultima_msg: str):
     if not res["ok"]:
         print(f"FALHA ao notificar atendente em {NUMERO_NOTIF!r} "
               f"(cliente {numero_cliente}): {res['detalhe']}")
+    elif conflito_numero():
+        print(f"ATENCAO: NUMERO_NOTIF ({NUMERO_NOTIF}) e o MESMO numero do "
+              f"bot. A notificacao foi enviada, mas para o proprio bot — "
+              f"troque NUMERO_NOTIF no Railway pelo seu celular.")
+    else:
+        print(f"[notif] enviada para {NUMERO_NOTIF} "
+              f"(cliente {numero_cliente})")
 
 
 # ── TEXTOS DO BOT ────────────────────────────
@@ -601,6 +622,15 @@ async def webhook(request: Request):
         if evento != "messages.upsert":
             return JSONResponse({"ok": True})
 
+        # A Evolution manda em "sender" o JID da PROPRIA instancia (o
+        # numero do WhatsApp do bot). Guardar isso permite detectar a
+        # configuracao em que NUMERO_NOTIF aponta para o proprio bot: o
+        # envio "funciona", a mensagem cai na conversa do bot consigo
+        # mesmo, e o atendente nunca ve nada.
+        rem = (body.get("sender") or "").split("@")[0]
+        if rem.isdigit():
+            instancia_info["numero"] = rem
+
         data = body.get("data", {})
 
         # Ignora mensagens enviadas pelo próprio bot
@@ -654,7 +684,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.6.0"
+VERSAO = "3.7.0"
 
 
 @app.get("/")
@@ -685,6 +715,14 @@ def ver_versao():
         "conversas_ativas": len(conversas),
         # Prova de que a notificacao ao atendente esta saindo de verdade.
         "ultima_notificacao": ultima_notificacao,
+        "notificacao": {
+            "numero_destino": NUMERO_NOTIF,
+            "origem": ("variavel de ambiente" if os.getenv("NUMERO_NOTIF")
+                       else "padrao do codigo"),
+            # Descoberto no 1o webhook; null ate chegar a 1a mensagem.
+            "numero_do_bot": instancia_info["numero"],
+            "CONFLITO_notif_igual_ao_bot": conflito_numero(),
+        },
         "evolution": {
             "url": EVOLUTION_URL,          # sem a apikey; só o endereço
             "instancia": INSTANCE_NAME,
@@ -787,6 +825,8 @@ async def teste_notificacao():
     return {
         "versao": VERSAO,
         "numero_destino": NUMERO_NOTIF,
+        "numero_do_bot": instancia_info["numero"],
+        "CONFLITO_notif_igual_ao_bot": conflito_numero(),
         "origem_do_numero": ("variavel de ambiente"
                              if os.getenv("NUMERO_NOTIF") else "padrao do codigo"),
         "instancia": INSTANCE_NAME,
