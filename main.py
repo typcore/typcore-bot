@@ -84,42 +84,49 @@ async def notificar_atendente(numero_cliente: str, nome: str, ultima_msg: str):
     await enviar_mensagem(NUMERO_NOTIF, texto)
 
 
-# ── TEXTOS DO BOT ────────────────────────────────────────────
+# ── TEXTOS DO BOT ────────────────────────────
+
+# REGISTRO: o cliente esta avaliando pagar uma mensalidade. Emoji numerado,
+# exclamacao e "ótimo!/perfeito!" fazem o atendimento parecer amador e
+# derrubam o valor percebido do software. Tom: educado, curto, sem euforia.
+# Nunca nomear pessoas nem revelar o tamanho da empresa.
+
+HORARIO = "Atendimento: seg a sex, 8h às 18h · sáb, 9h às 13h"
 
 MENU_PRINCIPAL = """\
-Olá! Bem-vindo à *TypCore* 👋
+*TypCore* — Sistemas de gestão
 
-Sou o assistente virtual da TypCore e estou aqui para ajudá-lo.
+Olá. Sou o assistente virtual da TypCore.
 
-Por favor, selecione uma opção:
+Escolha uma opção:
 
-1️⃣  Suporte técnico
-2️⃣  Ativar minha licença
-3️⃣  Planos e preços
-4️⃣  Falar com um atendente
+*1* · Suporte técnico
+*2* · Ativar licença
+*3* · Planos e preços
+*4* · Falar com um atendente
 
-_Digite o número da opção desejada._"""
+_Responda com o número da opção._"""
 
 MENU_SUPORTE = """\
-*Suporte Técnico* 🛠️
+*Suporte técnico*
 
-Selecione o assunto:
+Qual é o assunto?
 
-1️⃣  Sistema não abre ou trava
-2️⃣  Erro de conexão com banco de dados
-3️⃣  Problema na ativação do serial
-4️⃣  Dúvida sobre funcionalidades
-5️⃣  Outro assunto
+*1* · O sistema não abre ou travou
+*2* · Erro de conexão com o banco de dados
+*3* · Problema na ativação da licença
+*4* · Dúvida sobre funcionalidades
+*5* · Outro assunto
 
-0️⃣  ← Voltar ao menu principal"""
+*0* · Voltar ao menu"""
 
 # ATENCAO: estes valores tem de bater com window.TYPCORE.tiers do site
 # (typcore.com.br). Mexeu no preco la, atualize AQUI tambem — hoje sao
 # duas fontes separadas. Conferido em 23/09/2026.
 MENU_PRECOS = """\
-*Planos TypCore* 💼
+*Planos TypCore*
 
-O preço depende da nota fiscal que o seu negócio emite:
+O preço depende da nota fiscal que o seu negócio emite.
 
 *Essencial* — sem nota fiscal
 R$ 89/mês · R$ 79 no trimestral · R$ 69 no anual
@@ -133,111 +140,101 @@ _Mercadinhos, lojas, mecânicas, celulares, informática_
 R$ 199/mês · R$ 189 no trimestral · R$ 179 no anual
 _Para quem emite os dois tipos de nota_
 
-Todos incluem: até 3 computadores, suporte no WhatsApp,
+Todos os planos incluem até 3 computadores, suporte no WhatsApp,
 atualizações e backup. Sem fidelidade e sem taxa de implantação.
 
-🎁 *15 dias grátis, sem cartão.*
+*15 dias de teste, sem cartão.*
 
-*Disponíveis agora:*
-🦷 Odonto · 💅 Estética · 🏃 Fisioterapia
-🛒 Mercadinho · 💻 Informática · 📱 Celulares
+*Disponíveis:* Odonto, Estética, Fisioterapia, Mercadinho,
+Informática e Celulares.
 
-*Em breve:* Mecânica (Autos e Motos), Lojas, Salão,
-Veterinária, Petshop, Pilates e outros.
+*Em desenvolvimento:* Mecânica (Autos e Motos), Lojas, Salão,
+Veterinária, Petshop e Pilates.
 
-1️⃣  Quero contratar
-2️⃣  Tenho dúvidas sobre os planos
-3️⃣  Não sei qual plano é o meu
-0️⃣  ← Voltar ao menu principal"""
+*1* · Quero contratar
+*2* · Tenho dúvidas sobre os planos
+*3* · Não sei qual plano é o meu
+*0* · Voltar ao menu"""
 
 RESPOSTAS_SUPORTE = {
     "1": """\
-*Sistema não abre ou trava* 💻
+*O sistema não abre ou travou*
 
-Siga os passos abaixo:
+Tente nesta ordem:
 
-1. Feche o sistema completamente
-2. Aguarde 30 segundos
-3. Abra novamente como *Administrador*
-   (botão direito → Executar como administrador)
-4. Se persistir, verifique se o serviço *MariaDB* está ativo:
-   Windows + R → services.msc → MariaDB → Iniciar
+1. Feche o sistema por completo e aguarde 30 segundos.
+2. Abra novamente como administrador
+   (botão direito → Executar como administrador).
+3. Se continuar, confirme se o serviço *MariaDB* está ativo:
+   Windows + R → services.msc → MariaDB → Iniciar.
 
-Isso resolveu o problema?
+Isso resolveu?
 
-1️⃣  Sim, resolveu!
-2️⃣  Não, ainda com problema
-0️⃣  ← Voltar ao menu""",
+*1* · Resolvido
+*2* · Continua o problema
+*0* · Voltar ao menu""",
 
     "2": """\
-*Erro de conexão com banco de dados* 🗄️
+*Erro de conexão com o banco de dados*
 
-Verifique:
+Confirme os três pontos:
 
-1. O serviço *MariaDB* está rodando?
-   Windows + R → services.msc → MariaDB → Iniciar
-
+1. O serviço *MariaDB* está em execução?
+   Windows + R → services.msc → MariaDB → Iniciar.
 2. O arquivo *config.ini* existe na pasta do sistema?
-   Se não existir, abra o sistema e configure a conexão
-
-3. Tente reinstalar o sistema se o problema persistir
+   Se não existir, abra o sistema e configure a conexão.
+3. Se persistir, a reinstalação preserva os seus dados.
 
 Isso resolveu?
 
-1️⃣  Sim, resolveu!
-2️⃣  Não, preciso de mais ajuda
-0️⃣  ← Voltar ao menu""",
+*1* · Resolvido
+*2* · Continua o problema
+*0* · Voltar ao menu""",
 
     "3": """\
-*Problema na ativação do serial* 🔑
+*Problema na ativação da licença*
 
-Verifique:
+Confirme:
 
-1. O serial está no formato correto?
-   Exemplo: *XXXX-XXXX-XXXX-XXXX*
-
-2. Certifique-se de que o computador está conectado à internet
-
-3. O serial foi ativado em outra máquina?
-   Cada licença permite até *3 computadores*
-
-4. Verifique o e-mail onde recebeu o serial
+1. O serial está no formato *XXXX-XXXX-XXXX-XXXX*.
+2. O computador está conectado à internet.
+3. A licença permite até *3 computadores* — verifique se o limite
+   já foi usado em outras máquinas.
+4. O serial consta no e-mail de confirmação da assinatura.
 
 Isso resolveu?
 
-1️⃣  Sim, resolveu!
-2️⃣  Não, preciso de mais ajuda
-0️⃣  ← Voltar ao menu""",
+*1* · Resolvido
+*2* · Continua o problema
+*0* · Voltar ao menu""",
 
     # Os links abaixo foram conferidos em 23/09/2026 (todos respondem 200).
     # O caminho antigo /manuais/ estava dando 404 — o correto e /downloads/.
     "4": """\
-*Dúvidas sobre funcionalidades* 📖
+*Manuais dos sistemas*
 
-Baixe o manual do seu sistema:
-
-🦷 Odonto
+Odonto
 typcore.com.br/downloads/Manual_TypCore_Odonto.pdf
 
-💅 Estética
+Estética
 typcore.com.br/downloads/Manual_TypCore_Estetica.pdf
 
-🏃 Fisioterapia
+Fisioterapia
 typcore.com.br/downloads/Manual_TypCore_Fisioterapia.pdf
 
-🛒 Mercadinho
+Mercadinho
 typcore.com.br/downloads/Manual_TypCore_Mercadinho.pdf
 
-💻 Informática
+Informática
 typcore.com.br/downloads/Manual_TypCore_Informatica.pdf
 
-📱 Celulares
+Celulares
 typcore.com.br/downloads/Manual_TypCore_Celulares.pdf
 
-Ainda tem dúvidas?
+Ficou alguma dúvida?
 
-1️⃣  Sim, quero falar com um atendente
-0️⃣  ← Voltar ao menu""",
+*1* · Quero falar com um atendente
+*0* · Voltar ao menu""",
 }
 
 
@@ -350,9 +347,9 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
             numero, conv["nome"],
             conv["ultima_msg"] + ("" if escalar else "  [IA indisponível]"))
         await enviar_mensagem(numero, (
-            "Deixa eu chamar alguém para te responder direito. 👍\n\n"
-            "Já avisei aqui — em breve você recebe retorno.\n\n"
-            "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
+            "Vou encaminhar a sua mensagem para um atendente.\n\n"
+            "A nossa equipe já foi notificada e responde aqui mesmo.\n\n"
+            + HORARIO
         ))
         return
 
@@ -371,17 +368,16 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
         elif texto == "2":
             conv["estado"] = "ativacao"
             await enviar_mensagem(numero, (
-                "*Ativação de Licença* 🔑\n\n"
-                "Para ativar sua licença:\n\n"
-                "1. Abra o sistema instalado\n"
-                "2. Na tela de ativação, insira seu serial\n"
-                "   Formato: XXXX-XXXX-XXXX-XXXX\n"
-                "3. Clique em *Ativar sistema*\n\n"
-                "Não recebeu seu serial? Verifique sua caixa de entrada "
-                "e a pasta de spam.\n\n"
-                "1️⃣  Não recebi o serial\n"
-                "2️⃣  Meu serial não funciona\n"
-                "0️⃣  ← Voltar ao menu"
+                "*Ativação de licença*\n\n"
+                "1. Abra o sistema instalado.\n"
+                "2. Na tela de ativação, informe o serial\n"
+                "   (formato XXXX-XXXX-XXXX-XXXX).\n"
+                "3. Clique em *Ativar sistema*.\n\n"
+                "O serial consta no e-mail de confirmação da assinatura. "
+                "Verifique também a pasta de spam.\n\n"
+                "*1* · Não recebi o serial\n"
+                "*2* · O serial não funciona\n"
+                "*0* · Voltar ao menu"
             ))
 
         elif texto == "3":
@@ -392,18 +388,14 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
             conv["estado"] = "aguardando_humano"
             await notificar_atendente(numero, conv["nome"], conv["ultima_msg"])
             await enviar_mensagem(numero, (
-                "Perfeito! 👍\n\n"
-                "Um de nossos atendentes foi notificado e entrará em contato "
-                "em breve pelo WhatsApp.\n\n"
-                "⏱️ *Horário de atendimento:*\n"
-                "Segunda a sexta: 08h às 18h\n"
-                "Sábados: 09h às 13h\n\n"
-                "Obrigado pela paciência! 😊"
+                "Sua solicitação foi registrada.\n\n"
+                "Um atendente responde aqui mesmo, neste WhatsApp.\n\n"
+                + HORARIO
             ))
 
         else:
             await enviar_mensagem(numero, (
-                "Opção não reconhecida. Por favor, digite o número da opção desejada.\n\n"
+                "Não reconheci essa opção. Responda com o número.\n\n"
                 + MENU_PRINCIPAL
             ))
         return
@@ -422,13 +414,13 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
             conv["estado"] = "aguardando_humano"
             await notificar_atendente(numero, conv["nome"], "Suporte - outro assunto")
             await enviar_mensagem(numero, (
-                "Entendido! Vou encaminhar para nosso suporte. 👍\n\n"
-                "Um atendente entrará em contato em breve.\n\n"
-                "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
+                "Registrado. Vou encaminhar para o suporte técnico.\n\n"
+                "Um atendente responde aqui mesmo.\n\n"
+                + HORARIO
             ))
 
         else:
-            await enviar_mensagem(numero, "Opção inválida.\n\n" + MENU_SUPORTE)
+            await enviar_mensagem(numero, "Não reconheci essa opção.\n\n" + MENU_SUPORTE)
         return
 
     # ── PÓS-SUPORTE (resolveu ou não?) ──
@@ -436,23 +428,23 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
         if texto == "1":
             conv["estado"] = "menu"
             await enviar_mensagem(numero, (
-                "Ótimo! Fico feliz que tenha resolvido. 😊\n\n"
-                "Posso ajudar com mais alguma coisa?\n\n"
+                "Bom saber que resolveu.\n\n"
+                "Posso ajudar em mais alguma coisa?\n\n"
                 + MENU_PRINCIPAL
             ))
         elif texto == "2":
             conv["estado"] = "aguardando_humano"
             await notificar_atendente(numero, conv["nome"], f"Suporte não resolvido: {estado}")
             await enviar_mensagem(numero, (
-                "Compreendo. Vou encaminhar para nosso suporte especializado. 🛠️\n\n"
-                "Um técnico entrará em contato em breve.\n\n"
-                "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
+                "Vou encaminhar para o suporte técnico com o histórico "
+                "do que você já tentou.\n\n"
+                + HORARIO
             ))
         elif texto == "0":
             conv["estado"] = "suporte"
             await enviar_mensagem(numero, MENU_SUPORTE)
         else:
-            await enviar_mensagem(numero, "Por favor, responda com 1 (resolveu) ou 2 (não resolveu).")
+            await enviar_mensagem(numero, "Responda com *1* (resolvido) ou *2* (continua o problema).")
         return
 
     # ── ATIVAÇÃO ──
@@ -465,12 +457,12 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
             motivo = "Não recebeu serial" if texto == "1" else "Serial não funciona"
             await notificar_atendente(numero, conv["nome"], f"Ativação: {motivo}")
             await enviar_mensagem(numero, (
-                "Entendido! Vou acionar nosso suporte para resolver isso. 🔑\n\n"
-                "Um atendente entrará em contato em breve com seu serial.\n\n"
-                "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
+                "Registrado. Vou encaminhar para o suporte verificar "
+                "a sua licença.\n\n"
+                + HORARIO
             ))
         else:
-            await enviar_mensagem(numero, "Por favor, selecione uma das opções acima.")
+            await enviar_mensagem(numero, "Responda com o número de uma das opções acima.")
         return
 
     # ── PREÇOS ──
@@ -482,9 +474,9 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
             conv["estado"] = "aguardando_humano"
             await notificar_atendente(numero, conv["nome"], "Interesse em planos/contratação")
             await enviar_mensagem(numero, (
-                "Perfeito! Um de nossos consultores entrará em contato para "
-                "apresentar a melhor opção para o seu negócio. 😊\n\n"
-                "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
+                "Sua solicitação foi registrada. Um consultor entra em "
+                "contato para indicar o plano adequado ao seu negócio.\n\n"
+                + HORARIO
             ))
         elif texto == "3":
             # Qual plano serve depende da nota que o negocio emite, e muita
@@ -494,15 +486,15 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
             await notificar_atendente(
                 numero, conv["nome"], "Não sabe qual plano — precisa de orientação fiscal")
             await enviar_mensagem(numero, (
-                "Sem problema, isso é bem comum. 😊\n\n"
-                "O plano certo depende do tipo de nota que o seu negócio "
-                "precisa emitir, e isso muda conforme o ramo e o município.\n\n"
-                "Vou pedir para alguém te chamar e confirmar isso com você — "
-                "assim você não paga por nota que não usa.\n\n"
-                "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h"
+                "É uma dúvida comum. O plano depende do tipo de nota que o "
+                "seu negócio precisa emitir, e isso varia conforme o ramo "
+                "e o município.\n\n"
+                "Um consultor vai confirmar isso com você antes de qualquer "
+                "contratação, para você não pagar por nota que não usa.\n\n"
+                + HORARIO
             ))
         else:
-            await enviar_mensagem(numero, "Opção inválida.\n\n" + MENU_PRECOS)
+            await enviar_mensagem(numero, "Não reconheci essa opção.\n\n" + MENU_PRECOS)
         return
 
     # ── ESTADO IA ──
@@ -523,10 +515,9 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
             await enviar_mensagem(numero, MENU_PRINCIPAL)
             return
         await enviar_mensagem(numero, (
-            "Seu atendimento já foi encaminhado para nossa equipe. 👍\n\n"
-            "Em breve um atendente entrará em contato.\n\n"
-            "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h\n\n"
-            "Digite *menu* para acessar o menu principal."
+            "Sua solicitação já está com a nossa equipe.\n\n"
+            + HORARIO + "\n\n"
+            "Responda *menu* para voltar ao menu principal."
         ))
         return
 
@@ -600,7 +591,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.1.0"
+VERSAO = "3.2.0"
 
 
 @app.get("/")
