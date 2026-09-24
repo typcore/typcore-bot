@@ -41,7 +41,11 @@ EVOLUTION_URL_PADRAO = "https://evolution-api-production-8c70.up.railway.app"
 EVOLUTION_URL    = _normalizar_url(os.getenv("EVOLUTION_URL"), EVOLUTION_URL_PADRAO)
 EVOLUTION_APIKEY = os.getenv("EVOLUTION_APIKEY", "typcore-evolution-key")
 INSTANCE_NAME    = os.getenv("INSTANCE_NAME", "typcore")
-NUMERO_NOTIF     = os.getenv("NUMERO_NOTIF", "5511970667575")  # seu celular pessoal
+# So digitos: um "+", espaco ou hifen colado no valor da variavel
+# (facil de acontecer colando "+55 11 97066-7575" no painel) faz a
+# Evolution devolver 400 e a notificacao morre sem sintoma visivel.
+NUMERO_NOTIF     = "".join(filter(
+    str.isdigit, os.getenv("NUMERO_NOTIF", "5511970667575")))
 
 app = FastAPI(title="TypCore WhatsApp Bot")
 
@@ -54,34 +58,44 @@ TIMEOUT_MINUTOS = 30  # reseta conversa após inatividade
 
 # ── CLIENTE EVOLUTION API ────────────────────────────────────
 
-async def enviar_mensagem(numero: str, texto: str):
-    """Envia mensagem de texto via Evolution API."""
+async def enviar_detalhado(numero: str, texto: str) -> dict:
+    """Envia e devolve o resultado CRU: status HTTP e corpo da resposta.
+
+    Existe porque o envio falhava em silencio: sem ver o corpo da resposta
+    da Evolution nao da para saber se o problema e o numero, a instancia
+    desconectada ou a apikey.
+    """
     url = f"{EVOLUTION_URL}/message/sendText/{INSTANCE_NAME}"
-    payload = {
-        "number": numero,
-        "text":   texto,
-    }
+    payload = {"number": numero, "text": texto}
     async with httpx.AsyncClient(timeout=15) as client:
         try:
-            r = await client.post(
-                url,
-                json=payload,
-                headers={"apikey": EVOLUTION_APIKEY},
-            )
-            if r.status_code >= 400:
-                print(f"ERRO {r.status_code} ao enviar para {numero}: {r.text[:200]}")
-                return None
-            return r.json()
+            r = await client.post(url, json=payload,
+                                  headers={"apikey": EVOLUTION_APIKEY})
         except Exception as e:
             print(f"ERRO ao enviar para {numero}: {e}")
-            return None
+            return {"ok": False, "status": None,
+                    "detalhe": f"{type(e).__name__}: {e}"}
+    if r.status_code >= 400:
+        print(f"ERRO {r.status_code} ao enviar para {numero}: {r.text[:300]}")
+        return {"ok": False, "status": r.status_code, "detalhe": r.text[:500]}
+    try:
+        corpo = r.json()
+    except Exception:
+        corpo = r.text[:300]
+    return {"ok": True, "status": r.status_code, "detalhe": corpo}
+
+
+async def enviar_mensagem(numero: str, texto: str):
+    """Envia mensagem de texto via Evolution API."""
+    res = await enviar_detalhado(numero, texto)
+    return res["detalhe"] if res["ok"] else None
 
 
 # Ultima tentativa de notificacao, exposta em /versao. Sem isto uma falha
 # aqui e invisivel: o cliente ouve "vou encaminhar", o envio falha, e nao
 # sobra rastro em lugar nenhum.
 ultima_notificacao = {"quando": None, "para": None, "ok": None,
-                      "auto_teste": None}
+                      "auto_teste": None, "erro": None}
 
 
 async def notificar_atendente(numero_cliente: str, nome: str, ultima_msg: str):
@@ -101,16 +115,17 @@ async def notificar_atendente(numero_cliente: str, nome: str, ultima_msg: str):
         f"💬 Última mensagem: _{ultima_msg}_\n\n"
         f"Acesse o WhatsApp para atender."
     )
-    r = await enviar_mensagem(NUMERO_NOTIF, texto)
+    res = await enviar_detalhado(NUMERO_NOTIF, texto)
     ultima_notificacao.update({
         "quando": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "para":   NUMERO_NOTIF,
-        "ok":     r is not None,
+        "ok":     res["ok"],
         "auto_teste": auto_teste,
+        "erro":   None if res["ok"] else f"HTTP {res['status']}: {res['detalhe']}",
     })
-    if r is None:
+    if not res["ok"]:
         print(f"FALHA ao notificar atendente em {NUMERO_NOTIF!r} "
-              f"(cliente {numero_cliente})")
+              f"(cliente {numero_cliente}): {res['detalhe']}")
 
 
 # ── TEXTOS DO BOT ────────────────────────────
@@ -639,7 +654,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.5.0"
+VERSAO = "3.6.0"
 
 
 @app.get("/")
@@ -740,4 +755,41 @@ def ver_conversas(token: str = ""):
     return {
         k: {**v, "ultima": v["ultima"].isoformat()}
         for k, v in conversas.items()
+    }
+
+
+# Janela minima entre testes: impede que alguem descubra a URL e encha o
+# seu celular de mensagem. O destino e FIXO (NUMERO_NOTIF) e o texto e
+# fixo — nao da para usar este endpoint para mandar mensagem a terceiros.
+_ultimo_teste_notif = [0.0]
+
+
+@app.get("/teste-notificacao")
+async def teste_notificacao():
+    """Dispara uma notificacao de teste e mostra a resposta crua da Evolution.
+
+    Serve para separar as duas hipoteses sem depender do WhatsApp:
+      - erro aqui  -> o envio ao NUMERO_NOTIF esta quebrado (numero, apikey
+                      ou instancia desconectada); a resposta diz qual.
+      - sucesso    -> o envio funciona e o numero e outro aparelho.
+    """
+    import time
+    agora = time.time()
+    if agora - _ultimo_teste_notif[0] < 20:
+        return JSONResponse(
+            {"erro": "Aguarde 20s entre testes."}, status_code=429)
+    _ultimo_teste_notif[0] = agora
+
+    res = await enviar_detalhado(
+        NUMERO_NOTIF,
+        "\U0001f527 Teste de notificacao do bot TypCore. "
+        "Se voce recebeu isto, o aviso ao atendente esta funcionando.")
+    return {
+        "versao": VERSAO,
+        "numero_destino": NUMERO_NOTIF,
+        "origem_do_numero": ("variavel de ambiente"
+                             if os.getenv("NUMERO_NOTIF") else "padrao do codigo"),
+        "instancia": INSTANCE_NAME,
+        "evolution_url": EVOLUTION_URL,
+        "resultado": res,
     }
