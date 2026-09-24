@@ -3,6 +3,7 @@ TypCore WhatsApp Bot
 Webhook FastAPI + Evolution API
 """
 import os
+import re
 import json
 import httpx
 from datetime import datetime
@@ -289,9 +290,22 @@ SINAIS_SUPORTE = (
 )
 
 
+# "Gostaria de suporte" passou direto pela lista de frases e foi parar na
+# IA (visto em 24/09). Listar variacao por variacao nao escala: o cliente
+# escreve "preciso", "queria", "to precisando", "necessito". A regra e
+# verbo de necessidade + a palavra suporte/ajuda tecnica.
+_PEDIDO_SUPORTE = re.compile(
+    r"\b(preciso|precisava|precisando|quero|queria|gostaria|necessito|"
+    r"poderia ter|pode me dar|me d[aá])\b[^.?!]{0,25}\b"
+    r"(suporte|assist[eê]ncia|ajuda t[eé]cnica|atendimento t[eé]cnico)\b"
+)
+
+
 def parece_suporte(texto: str) -> bool:
     t = texto.lower()
-    return any(s in t for s in SINAIS_SUPORTE)
+    if any(s in t for s in SINAIS_SUPORTE):
+        return True
+    return bool(_PEDIDO_SUPORTE.search(t))
 
 
 def get_conversa(numero: str) -> dict:
@@ -625,7 +639,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.4.0"
+VERSAO = "3.5.0"
 
 
 @app.get("/")
