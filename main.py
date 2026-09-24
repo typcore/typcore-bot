@@ -281,6 +281,10 @@ def get_conversa(numero: str) -> dict:
             # a cada deploy do Railway — aceitável porque a conversa
             # também expira em TIMEOUT_MINUTOS.
             "historico": [],
+            # Marca que o aviso AUTOMATICO de suporte ja foi disparado nesta
+            # conversa. Escalonamento EXPLICITO (cliente pede humano) sempre
+            # notifica de novo: ali a informacao e nova.
+            "avisado_suporte": False,
         }
     return conversas[numero]
 
@@ -311,6 +315,16 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
     # ANTES de qualquer coisa sair para o provedor de IA.
     if not so_numero and not fluxo_fixo and parece_suporte(texto):
         conv["estado"] = "suporte"
+        # Avisa o atendente JA, sem esperar o cliente pedir humano. Quem
+        # esta com o sistema parado muitas vezes abandona o menu numerado
+        # e some — e ai ninguem fica sabendo que existiu o problema.
+        # A tag diz que ele esta tentando se resolver sozinho, para nao
+        # interromper quem esta a meio caminho.
+        if not conv.get("avisado_suporte"):
+            conv["avisado_suporte"] = True
+            await notificar_atendente(
+                numero, conv["nome"],
+                texto + "  [suporte detectado - auto-atendimento em andamento]")
         await enviar_mensagem(numero, MENU_SUPORTE)
         return
 
@@ -502,15 +516,18 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
 
     # ── AGUARDANDO HUMANO ──
     if estado == "aguardando_humano":
+        # "menu" tem de sair ANTES: antes disto o cliente recebia o aviso
+        # de "ja encaminhado" E o menu, duas mensagens para um comando.
+        if texto.lower() in ("menu", "0"):
+            conv["estado"] = "menu"
+            await enviar_mensagem(numero, MENU_PRINCIPAL)
+            return
         await enviar_mensagem(numero, (
             "Seu atendimento já foi encaminhado para nossa equipe. 👍\n\n"
             "Em breve um atendente entrará em contato.\n\n"
             "⏱️ Seg–Sex: 08h–18h | Sáb: 09h–13h\n\n"
             "Digite *menu* para acessar o menu principal."
         ))
-        if texto.lower() == "menu":
-            conv["estado"] = "menu"
-            await enviar_mensagem(numero, MENU_PRINCIPAL)
         return
 
     # Estado desconhecido — reseta
@@ -583,7 +600,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.0.0"
+VERSAO = "3.1.0"
 
 
 @app.get("/")
