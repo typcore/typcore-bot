@@ -336,6 +336,30 @@ def ia_ativa() -> bool:
     return False
 
 
+# Frases com que o modelo anuncia que vai passar para um humano. Sao VERBOS
+# de promessa de proposito: substantivos como "nossa equipe" ou "um atendente"
+# aparecem tambem em resposta puramente informativa ("o suporte e no
+# WhatsApp") e gerariam notificacao a toa.
+_PROMESSAS = (
+    "vou te transferir", "vou transferir", "vou te passar", "vou passar para",
+    "vou encaminhar", "vou repassar", "vou chamar", "vou acionar",
+    "vou pedir para", "vou pedir que", "vou verificar com", "vou confirmar com",
+    "vou checar com", "vou avisar", "estou transferindo", "estou encaminhando",
+    "transferindo voce", "transferindo voc\u00ea",
+    "entrara em contato", "entrar\u00e1 em contato",
+    "entraremos em contato", "entram em contato", "entra em contato",
+    "retornamos", "te retorno", "damos retorno",
+    "so um instante", "s\u00f3 um instante", "um instante", "um momento",
+    "aguarde um", "j\u00e1 volto", "ja volto",
+)
+
+
+def promete_transferencia(txt: str) -> bool:
+    """A resposta anuncia atendimento humano? Entao tem de notificar."""
+    t = (txt or "").lower()
+    return any(f in t for f in _PROMESSAS)
+
+
 async def responder(historico: list):
     """Devolve (texto, escalar) — ou (None, False) se a IA não puder responder.
 
@@ -367,4 +391,13 @@ async def responder(historico: list):
 
     escalar = "[ESCALAR]" in txt
     txt = txt.replace("[ESCALAR]", "").strip()
+
+    # REDE DE SEGURANCA: o modelo as vezes PROMETE a transferencia em prosa
+    # e esquece a tag. Sem isto o cliente ouve "vou te transferir" e
+    # ninguem e avisado — ele fica esperando um retorno que nao existe.
+    # Uma notificacao a mais custa uma olhada no celular; uma a menos
+    # custa o cliente.
+    if not escalar and promete_transferencia(txt):
+        escalar = True
+
     return (txt or None), escalar

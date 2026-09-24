@@ -67,9 +67,19 @@ async def enviar_mensagem(numero: str, texto: str):
                 json=payload,
                 headers={"apikey": EVOLUTION_APIKEY},
             )
+            if r.status_code >= 400:
+                print(f"ERRO {r.status_code} ao enviar para {numero}: {r.text[:200]}")
+                return None
             return r.json()
         except Exception as e:
             print(f"ERRO ao enviar para {numero}: {e}")
+            return None
+
+
+# Ultima tentativa de notificacao, exposta em /versao. Sem isto uma falha
+# aqui e invisivel: o cliente ouve "vou encaminhar", o envio falha, e nao
+# sobra rastro em lugar nenhum.
+ultima_notificacao = {"quando": None, "para": None, "ok": None}
 
 
 async def notificar_atendente(numero_cliente: str, nome: str, ultima_msg: str):
@@ -81,7 +91,15 @@ async def notificar_atendente(numero_cliente: str, nome: str, ultima_msg: str):
         f"💬 Última mensagem: _{ultima_msg}_\n\n"
         f"Acesse o WhatsApp para atender."
     )
-    await enviar_mensagem(NUMERO_NOTIF, texto)
+    r = await enviar_mensagem(NUMERO_NOTIF, texto)
+    ultima_notificacao.update({
+        "quando": datetime.utcnow().isoformat(timespec="seconds") + "Z",
+        "para":   NUMERO_NOTIF,
+        "ok":     r is not None,
+    })
+    if r is None:
+        print(f"FALHA ao notificar atendente em {NUMERO_NOTIF!r} "
+              f"(cliente {numero_cliente})")
 
 
 # ── TEXTOS DO BOT ────────────────────────────
@@ -252,6 +270,12 @@ SINAIS_SUPORTE = (
     "perdi", "backup", "banco de dados", "mariadb", "serial", "licenca",
     "licença", "ativar", "ativacao", "ativação", "nao imprime", "não imprime",
     "nota nao sai", "nota não sai", "rejeitada", "sefaz",
+    # Pedidos explicitos de suporte. Frases, nunca a palavra "suporte"
+    # solta — "tem suporte incluso?" e pergunta de venda, nao de suporte.
+    "preciso de suporte", "quero suporte", "queria suporte",
+    "falar com o suporte", "falar com suporte", "chamar o suporte",
+    "suporte tecnico", "suporte técnico", "assistencia tecnica",
+    "abrir um chamado", "abrir chamado",
 )
 
 
@@ -591,7 +615,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.2.0"
+VERSAO = "3.3.0"
 
 
 @app.get("/")
@@ -620,6 +644,8 @@ def ver_versao():
             "produtos": len(base.get("produtos", [])),
         },
         "conversas_ativas": len(conversas),
+        # Prova de que a notificacao ao atendente esta saindo de verdade.
+        "ultima_notificacao": ultima_notificacao,
         "evolution": {
             "url": EVOLUTION_URL,          # sem a apikey; só o endereço
             "instancia": INSTANCE_NAME,
