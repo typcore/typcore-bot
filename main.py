@@ -41,11 +41,31 @@ EVOLUTION_URL_PADRAO = "https://evolution-api-production-8c70.up.railway.app"
 EVOLUTION_URL    = _normalizar_url(os.getenv("EVOLUTION_URL"), EVOLUTION_URL_PADRAO)
 EVOLUTION_APIKEY = os.getenv("EVOLUTION_APIKEY", "typcore-evolution-key")
 INSTANCE_NAME    = os.getenv("INSTANCE_NAME", "typcore")
-# So digitos: um "+", espaco ou hifen colado no valor da variavel
-# (facil de acontecer colando "+55 11 97066-7575" no painel) faz a
-# Evolution devolver 400 e a notificacao morre sem sintoma visivel.
-NUMERO_NOTIF     = "".join(filter(
-    str.isdigit, os.getenv("NUMERO_NOTIF", "5511970667575")))
+NUMERO_NOTIF_PADRAO = "5511970667575"
+
+# CUIDADO COM O DEFAULT DO os.getenv: ele so vale quando a variavel NAO
+# EXISTE. Uma variavel que existe com valor EM BRANCO devolve "" e passa
+# por cima do padrao. Foi exatamente isso que aconteceu em 24/09: o
+# NUMERO_NOTIF estava criado e vazio no Railway, o bot mandava
+# {"number": ""} e a Evolution respondia 400 com jid "@s.whatsapp.net".
+# Toda notificacao falhou por isso, desde sempre.
+_notif_bruto = os.getenv("NUMERO_NOTIF") or ""
+NUMERO_NOTIF = "".join(filter(str.isdigit, _notif_bruto)) or NUMERO_NOTIF_PADRAO
+
+# Numero brasileiro valido tem 12 ou 13 digitos (55 + DDD + 8 ou 9).
+# Fora disso o valor esta errado — melhor cair no padrao do que falhar
+# em silencio justamente na hora em que o cliente precisa de atendimento.
+if not (12 <= len(NUMERO_NOTIF) <= 13):
+    print(f"AVISO: NUMERO_NOTIF={_notif_bruto!r} nao parece numero valido "
+          f"({len(NUMERO_NOTIF)} digitos). Usando o padrao do codigo.")
+    NUMERO_NOTIF = NUMERO_NOTIF_PADRAO
+
+if not _notif_bruto.strip():
+    print(f"AVISO: NUMERO_NOTIF vazio ou ausente no ambiente. "
+          f"Usando o padrao do codigo: {NUMERO_NOTIF}")
+elif "".join(filter(str.isdigit, _notif_bruto)) != _notif_bruto:
+    print(f"AVISO: NUMERO_NOTIF tinha caracteres nao numericos "
+          f"({_notif_bruto!r}); usando {NUMERO_NOTIF!r}.")
 
 app = FastAPI(title="TypCore WhatsApp Bot")
 
@@ -684,7 +704,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.7.0"
+VERSAO = "3.8.0"
 
 
 @app.get("/")
@@ -717,8 +737,11 @@ def ver_versao():
         "ultima_notificacao": ultima_notificacao,
         "notificacao": {
             "numero_destino": NUMERO_NOTIF,
-            "origem": ("variavel de ambiente" if os.getenv("NUMERO_NOTIF")
-                       else "padrao do codigo"),
+            "origem": ("variavel de ambiente"
+                       if (os.getenv("NUMERO_NOTIF") or "").strip()
+                       else "padrao do codigo (variavel vazia ou ausente)"),
+            # Quantos caracteres a variavel tinha. 0 = criada e em branco.
+            "tamanho_da_variavel": len(os.getenv("NUMERO_NOTIF") or ""),
             # Descoberto no 1o webhook; null ate chegar a 1a mensagem.
             "numero_do_bot": instancia_info["numero"],
             "CONFLITO_notif_igual_ao_bot": conflito_numero(),
