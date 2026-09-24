@@ -79,13 +79,22 @@ async def enviar_mensagem(numero: str, texto: str):
 # Ultima tentativa de notificacao, exposta em /versao. Sem isto uma falha
 # aqui e invisivel: o cliente ouve "vou encaminhar", o envio falha, e nao
 # sobra rastro em lugar nenhum.
-ultima_notificacao = {"quando": None, "para": None, "ok": None}
+ultima_notificacao = {"quando": None, "para": None, "ok": None,
+                      "auto_teste": None}
 
 
 async def notificar_atendente(numero_cliente: str, nome: str, ultima_msg: str):
     """Notifica o atendente humano quando cliente pede suporte."""
+    # Teste feito do PROPRIO numero de notificacao: a notificacao cai na
+    # mesma conversa em que o bot responde, misturada com as respostas
+    # dele. Nao e erro, mas confunde na hora de conferir — por isso vai
+    # rotulada e fica registrada em /versao.
+    auto_teste = numero_cliente == NUMERO_NOTIF
+    cabecalho = ("🔧 *TESTE — você escreveu do próprio número de "
+                 "notificação*" if auto_teste
+                 else "🔔 *Novo cliente aguardando atendimento*")
     texto = (
-        f"🔔 *Novo cliente aguardando atendimento!*\n\n"
+        f"{cabecalho}\n\n"
         f"👤 Nome: {nome or 'Não informado'}\n"
         f"📱 Número: {numero_cliente}\n"
         f"💬 Última mensagem: _{ultima_msg}_\n\n"
@@ -96,6 +105,7 @@ async def notificar_atendente(numero_cliente: str, nome: str, ultima_msg: str):
         "quando": datetime.utcnow().isoformat(timespec="seconds") + "Z",
         "para":   NUMERO_NOTIF,
         "ok":     r is not None,
+        "auto_teste": auto_teste,
     })
     if r is None:
         print(f"FALHA ao notificar atendente em {NUMERO_NOTIF!r} "
@@ -615,7 +625,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.3.0"
+VERSAO = "3.4.0"
 
 
 @app.get("/")
