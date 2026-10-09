@@ -231,10 +231,14 @@ atualizações e backup. Sem fidelidade e sem taxa de implantação.
 *15 dias de teste, sem cartão.*
 
 *Disponíveis:* Odonto, Estética, Fisioterapia, Mercadinho,
-Informática e Celulares.
+Informática, Celulares e Lojas.
 
-*Em desenvolvimento:* Mecânica (Autos e Motos), Lojas, Salão,
-Veterinária, Petshop e Pilates.
+*Também disponíveis, com preço próprio:* Emissor de Notas
+(a partir de R$ 29/mês) e DataBank para contadores
+(a partir de R$ 39/mês).
+
+*Em desenvolvimento:* Mecânica (Autos e Motos), Comércio e
+Serviços, Salão, Veterinária, Petshop e Pilates.
 
 *1* · Quero contratar
 *2* · Tenho dúvidas sobre os planos
