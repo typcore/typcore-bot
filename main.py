@@ -2,9 +2,11 @@
 TypCore WhatsApp Bot
 Webhook FastAPI + Evolution API
 """
+import asyncio
 import os
 import re
 import json
+import time
 import httpx
 from datetime import datetime
 from fastapi import FastAPI, Request
@@ -78,7 +80,12 @@ TIMEOUT_MINUTOS = 30  # reseta conversa após inatividade
 
 # ── CLIENTE EVOLUTION API ────────────────────────────────────
 
-async def enviar_detalhado(numero: str, texto: str) -> dict:
+def _cliente(timeout: float = 15) -> httpx.AsyncClient:
+    """Um lugar só para criar o cliente HTTP (o teste troca por um falso)."""
+    return httpx.AsyncClient(timeout=timeout)
+
+
+async def _enviar_uma_vez(numero: str, texto: str) -> dict:
     """Envia e devolve o resultado CRU: status HTTP e corpo da resposta.
 
     Existe porque o envio falhava em silencio: sem ver o corpo da resposta
@@ -87,12 +94,12 @@ async def enviar_detalhado(numero: str, texto: str) -> dict:
     """
     url = f"{EVOLUTION_URL}/message/sendText/{INSTANCE_NAME}"
     payload = {"number": numero, "text": texto}
-    async with httpx.AsyncClient(timeout=15) as client:
+    async with _cliente(15) as client:
         try:
             r = await client.post(url, json=payload,
                                   headers={"apikey": EVOLUTION_APIKEY})
         except Exception as e:
-            print(f"ERRO ao enviar para {numero}: {e}")
+            print(f"ERRO ao enviar para {numero}: {type(e).__name__} {e}")
             return {"ok": False, "status": None,
                     "detalhe": f"{type(e).__name__}: {e}"}
     if r.status_code >= 400:
@@ -103,6 +110,91 @@ async def enviar_detalhado(numero: str, texto: str) -> dict:
     except Exception:
         corpo = r.text[:300]
     return {"ok": True, "status": r.status_code, "detalhe": corpo}
+
+
+# ── RELIGAMENTO AUTOMATICO DA EVOLUTION (20/11/2026) ─────────
+# Em 19/11 as 23:21 a conexao da Evolution com o WhatsApp caiu ("error in
+# sending keep alive") e voltou "meio viva": o painel mostrava conectado,
+# as mensagens CHEGAVAM, mas todo envio dava 500 "Connection Closed". O bot
+# ficou mudo ate alguem reconectar na mao (20/11, 07:34).
+# Agora, quando o envio falha desse jeito, o bot pede a propria Evolution
+# para reiniciar a conexao (POST /instance/restart, a mesma coisa que o
+# botao Restart do painel: nao pede QR code), espera ela voltar a "open" e
+# tenta o envio de novo, uma vez.
+RELIGAR_INTERVALO_MIN = 60   # segundos entre dois religamentos (varios envios falhando juntos = 1 religamento)
+ESPERA_CONEXAO_MAX = 20      # quanto espera a conexao voltar depois de religar
+_trava_religar = asyncio.Lock()
+_ultimo_religar = [0.0]
+religamento = {"total": 0, "ultimo": None, "resultado": None, "reenvios_ok": 0}
+
+
+def _conexao_caida(res: dict) -> bool:
+    """O envio falhou porque a conexao com o WhatsApp caiu?
+
+    Sem resposta (tempo esgotado) e erro 5xx contam. Erro 4xx (numero
+    invalido, apikey errada) NAO: religar nao resolve e so atrasaria.
+    """
+    if res["ok"]:
+        return False
+    if res["status"] is None or res["status"] >= 500:
+        return True
+    d = str(res["detalhe"]).lower()
+    return "connection closed" in d or "not connected" in d
+
+
+async def _estado_conexao(client: httpx.AsyncClient) -> str:
+    try:
+        r = await client.get(f"{EVOLUTION_URL}/instance/connectionState/{INSTANCE_NAME}",
+                             headers={"apikey": EVOLUTION_APIKEY})
+        return str(r.json().get("instance", {}).get("state") or "")
+    except Exception:
+        return ""
+
+
+async def religar_evolution() -> bool:
+    """Reinicia a conexao da instancia e espera voltar. True = "open"."""
+    async with _trava_religar:
+        async with _cliente(15) as c:
+            if time.monotonic() - _ultimo_religar[0] < RELIGAR_INTERVALO_MIN:
+                # Outro envio acabou de religar: so confere se ja voltou.
+                return await _estado_conexao(c) == "open"
+            _ultimo_religar[0] = time.monotonic()
+            religamento["total"] += 1
+            religamento["ultimo"] = datetime.utcnow().isoformat(timespec="seconds") + "Z"
+            try:
+                r = await c.post(f"{EVOLUTION_URL}/instance/restart/{INSTANCE_NAME}",
+                                 headers={"apikey": EVOLUTION_APIKEY})
+                print(f"[religar] Evolution: restart da instancia {INSTANCE_NAME} -> HTTP {r.status_code}")
+            except Exception as e:
+                print(f"[religar] restart falhou: {type(e).__name__} {e}")
+            estado = ""
+            fim = time.monotonic() + ESPERA_CONEXAO_MAX
+            while time.monotonic() < fim:
+                await asyncio.sleep(2)
+                estado = await _estado_conexao(c)
+                if estado == "open":
+                    break
+        ok = estado == "open"
+        religamento["resultado"] = "conexao voltou (open)" if ok else f"nao voltou (estado: {estado or 'sem resposta'})"
+        print(f"[religar] {religamento['resultado']}")
+        return ok
+
+
+async def enviar_detalhado(numero: str, texto: str) -> dict:
+    """Envia; se a conexao com o WhatsApp caiu, religa e tenta de novo (1x)."""
+    res = await _enviar_uma_vez(numero, texto)
+    if not _conexao_caida(res):
+        return res
+    print(f"[religar] envio para {numero} falhou com a conexao caida; religando a Evolution")
+    if await religar_evolution():
+        res2 = await _enviar_uma_vez(numero, texto)
+        if res2["ok"]:
+            religamento["reenvios_ok"] += 1
+            print(f"[religar] reenviado para {numero} depois de religar")
+            return res2
+        res = res2
+    print(f"FALHA ao enviar para {numero} mesmo depois de religar a Evolution: {res['detalhe']}")
+    return res
 
 
 async def enviar_mensagem(numero: str, texto: str):
@@ -708,7 +800,7 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.8.0"
+VERSAO = "3.9.0"   # 3.9.0 (20/11/2026): religa a Evolution quando o envio dá "Connection Closed"
 
 
 @app.get("/")
@@ -739,6 +831,8 @@ def ver_versao():
         "conversas_ativas": len(conversas),
         # Prova de que a notificacao ao atendente esta saindo de verdade.
         "ultima_notificacao": ultima_notificacao,
+        # Quantas vezes o bot religou a Evolution sozinho (conexao caida).
+        "religamento": religamento,
         "notificacao": {
             "numero_destino": NUMERO_NOTIF,
             "origem": ("variavel de ambiente"
