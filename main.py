@@ -727,6 +727,59 @@ async def processar_mensagem(numero: str, texto: str, nome_contato: str):
 
 
 # ── WEBHOOK ──────────────────────────────────────────────────
+# 20/11/2026: o webhook passou a responder NA HORA e atender depois.
+# Antes ele esperava a IA e o envio: com a IA demorando (~2 min trocando de
+# modelo), a Evolution desistia em 60 s ("Timeout da requisicao"), marcava a
+# entrega como falha e MANDAVA A MESMA MENSAGEM DE NOVO -> o bot respondia
+# duas vezes. Agora: id da mensagem ja visto = ignora; mensagens do mesmo
+# numero sao atendidas uma de cada vez, na ordem em que chegaram.
+
+_tarefas: set = set()               # referencia as tarefas (senao o Python pode descarta-las)
+_ids_vistos: dict = {}              # id da mensagem -> quando chegou
+_travas_numero: dict = {}           # numero -> asyncio.Lock
+REPETIDA_JANELA = 15 * 60           # segundos
+
+
+def mensagem_repetida(msg_id: str) -> bool:
+    """True se este id ja chegou nos ultimos 15 min (a Evolution reenviou)."""
+    if not msg_id:
+        return False
+    agora = time.monotonic()
+    if len(_ids_vistos) > 500:
+        for k, t in list(_ids_vistos.items()):
+            if agora - t > REPETIDA_JANELA:
+                del _ids_vistos[k]
+    if msg_id in _ids_vistos and agora - _ids_vistos[msg_id] <= REPETIDA_JANELA:
+        return True
+    _ids_vistos[msg_id] = agora
+    return False
+
+
+async def _atender(numero: str, texto: str, nome: str):
+    trava = _travas_numero.setdefault(numero, asyncio.Lock())
+    async with trava:
+        try:
+            await processar_mensagem(numero, texto, nome)
+        except Exception as e:
+            print(f"ERRO ao atender {numero}: {type(e).__name__} {e}")
+
+
+def atender_depois(numero: str, texto: str, nome: str):
+    t = asyncio.create_task(_atender(numero, texto, nome))
+    _tarefas.add(t)
+    t.add_done_callback(_tarefas.discard)
+
+
+@app.on_event("startup")
+async def _aquecer_ia():
+    """Acha o modelo de IA que responde ANTES do primeiro cliente.
+
+    Sem isto, depois de cada deploy o primeiro cliente pagava a busca do
+    modelo (foi o "Ola" de 20/11 que levou 2 minutos)."""
+    t = asyncio.create_task(ia.aquecer())
+    _tarefas.add(t)
+    t.add_done_callback(_tarefas.discard)
+
 
 @app.post("/webhook")
 async def webhook(request: Request):
@@ -790,7 +843,10 @@ async def webhook(request: Request):
         nome = data.get("pushName", "")
 
         if texto:
-            await processar_mensagem(numero, texto, nome)
+            if mensagem_repetida(key.get("id") or ""):
+                print(f"[webhook] mensagem {key.get('id')} de {numero} chegou de novo — ignorada")
+            else:
+                atender_depois(numero, texto, nome)   # responde a Evolution ja
 
     except Exception as e:
         print(f"ERRO webhook: {e}")
@@ -800,7 +856,8 @@ async def webhook(request: Request):
 
 # Versão do código. Suba este número a cada alteração: é assim que se
 # confirma, de fora, QUAL código está rodando depois de um deploy.
-VERSAO = "3.9.0"   # 3.9.0 (20/11/2026): religa a Evolution quando o envio dá "Connection Closed"
+VERSAO = "3.10.0"  # 3.10.0 (20/11/2026): webhook responde na hora, ignora mensagem repetida, IA com teto de tempo
+#                    3.9.0  (20/11/2026): religa a Evolution quando o envio dá "Connection Closed"
 
 
 @app.get("/")
@@ -822,7 +879,11 @@ def ver_versao():
                                    else None),
             # Qual modelo a API aceitou de fato (só aparece após a 1ª resposta)
             "modelo_em_uso": getattr(ia, "_modelo_ok", None),
+            # Teto da IA por mensagem e o aquecimento feito ao ligar (3.10.0)
+            "tempo_total_s": getattr(ia, "TEMPO_TOTAL_IA", None),
+            "aquecimento": getattr(ia, "aquecimento", None),
         },
+        "mensagens_em_atendimento": len(_tarefas),
         "conhecimento": {
             "carregado": bool(base),
             "planos": len(base.get("planos", {})),

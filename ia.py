@@ -44,6 +44,11 @@ MAX_TURNOS_IA = int(os.getenv("MAX_TURNOS_IA", "12"))
 # 12s era pouco: a primeira chamada, com a base de conhecimento
 # inteira no prompt, estourava e voltava erro VAZIO.
 TIMEOUT_IA = float(os.getenv("TIMEOUT_IA", "35"))
+# Teto da IA INTEIRA (todos os modelos da fila somados). Em 20/11/2026 o "Ola"
+# levou ~2 min: cada modelo que falhava podia gastar os 35 s acima. Passou
+# do teto, a IA desiste e o bot faz o de sempre quando a IA falha: avisa o
+# atendente e diz ao cliente que vai encaminhar — melhor que ele esperando.
+TEMPO_TOTAL_IA = float(os.getenv("TEMPO_TOTAL_IA", "25"))
 
 _BASE = None
 
@@ -202,13 +207,23 @@ async def _listar_candidatos() -> list:
     return saida[:6]
 
 
-async def _gemini(instrucao: str, historico: list) -> str:
+def _sem_chave(msg: str) -> str:
+    """Tira a chave da API de qualquer texto que vá para o log."""
+    return re.sub(r"key=[^&\s'\"]+", "key=***", msg)
+
+
+async def _gemini(instrucao: str, historico: list, tempo_total: float = None) -> str:
     global _modelo_ok, _lista_cache
+    loop = asyncio.get_running_loop()
+    fim = loop.time() + (tempo_total or TEMPO_TOTAL_IA)
+
+    def resta() -> float:
+        return fim - loop.time()
 
     # A lista da API é buscada UMA vez e reaproveitada (evita um ida-e-volta
     # extra a cada mensagem).
     if _lista_cache is None:
-        _lista_cache = await _listar_candidatos()
+        _lista_cache = await asyncio.wait_for(_listar_candidatos(), timeout=max(1.0, resta()))
 
     # O modelo que já funcionou vira PREFERÊNCIA, não exclusividade.
     # Antes eu tentava só ele — e quando ele ficava sobrecarregado (503), o
@@ -222,31 +237,46 @@ async def _gemini(instrucao: str, historico: list) -> str:
         candidatos.insert(0, _modelo_ok)
 
     erros, transitorios = [], []
+    sem_tempo = False
     for modelo in candidatos:
+        if resta() < 3:
+            sem_tempo = True
+            break
+        t0 = loop.time()
         try:
-            texto = await _gemini_tentar(modelo, instrucao, historico)
+            texto = await _gemini_tentar(modelo, instrucao, historico,
+                                         timeout=min(TIMEOUT_IA, resta()))
             if _modelo_ok != modelo:
                 print(f"[ia] usando modelo {modelo!r}")
             _modelo_ok = modelo
             return texto
         except Exception as e:
-            msg = str(e) or f"{type(e).__name__} (sem detalhe)"
+            msg = _sem_chave(str(e) or f"{type(e).__name__} (sem detalhe)")
             erros.append(f"{modelo}: {msg}")
+            print(f"[ia] {modelo} falhou em {loop.time() - t0:.1f}s: {msg[:160]}")
             if "503" in msg or "UNAVAILABLE" in msg:
                 transitorios.append(modelo)   # sobrecarga: vale tentar de novo
             continue
 
     # Segunda rodada só nos que falharam por sobrecarga momentânea.
-    for modelo in transitorios:
+    for modelo in ([] if sem_tempo else transitorios):
+        if resta() < 4.5:
+            sem_tempo = True
+            break
         try:
             await asyncio.sleep(1.5)
-            texto = await _gemini_tentar(modelo, instrucao, historico)
+            texto = await _gemini_tentar(modelo, instrucao, historico,
+                                         timeout=min(TIMEOUT_IA, resta()))
             print(f"[ia] usando modelo {modelo!r} (2a tentativa)")
             _modelo_ok = modelo
             return texto
         except Exception as e:
-            erros.append(f"{modelo} (retry): {str(e) or type(e).__name__}")
+            erros.append(f"{modelo} (retry): {_sem_chave(str(e) or type(e).__name__)}")
 
+    if sem_tempo:
+        # Acabou o tempo, não a fila: a lista continua valendo.
+        raise RuntimeError(f"tempo da IA esgotado ({TEMPO_TOTAL_IA:.0f}s) -> "
+                           + " | ".join(erros)[:600])
     # Falhou a fila inteira: pode ser que a lista em cache tenha envelhecido
     # (modelo descontinuado, conta com outro acesso). Invalida para a proxima
     # mensagem buscar a lista nova em vez de insistir numa fila morta.
@@ -254,7 +284,34 @@ async def _gemini(instrucao: str, historico: list) -> str:
     raise RuntimeError("nenhum modelo respondeu -> " + " | ".join(erros)[:600])
 
 
-async def _gemini_tentar(modelo: str, instrucao: str, historico: list) -> str:
+aquecimento = {"quando": None, "modelo": None, "segundos": None, "erro": None}
+
+
+async def aquecer() -> None:
+    """Chamado quando o bot liga: acha o modelo que responde antes do 1o cliente.
+
+    Usa o MESMO prompt de um atendimento de verdade (com a base de
+    conhecimento), porque é ele que pesa; com um prompt curto um modelo lento
+    passaria no aquecimento e estouraria com o cliente. Tem 90 s, sem pressa.
+    Se falhar, nada quebra: o atendimento tenta do jeito normal.
+    """
+    import time as _t
+    if IA_PROVEDOR != "gemini" or not ia_ativa():
+        return
+    t0 = _t.monotonic()
+    aquecimento["quando"] = _t.strftime("%Y-%m-%dT%H:%M:%S")
+    try:
+        await _gemini(montar_instrucao(), [{"quem": "cliente", "texto": "Olá"}], tempo_total=90)
+        aquecimento.update(modelo=_modelo_ok, erro=None)
+        print(f"[ia] aquecida: {_modelo_ok!r} em {_t.monotonic() - t0:.1f}s")
+    except Exception as e:
+        aquecimento["erro"] = _sem_chave(f"{type(e).__name__}: {e}")[:300]
+        print(f"[ia] aquecimento falhou: {aquecimento['erro']}")
+    aquecimento["segundos"] = round(_t.monotonic() - t0, 1)
+
+
+async def _gemini_tentar(modelo: str, instrucao: str, historico: list,
+                         timeout: float = None) -> str:
     url = (f"https://generativelanguage.googleapis.com/v1beta/models/"
            f"{modelo}:generateContent?key={GEMINI_KEY}")
     payload = {
@@ -276,8 +333,11 @@ async def _gemini_tentar(modelo: str, instrucao: str, historico: list) -> str:
             "thinkingConfig": {"thinkingBudget": 0},
         },
     }
-    async with httpx.AsyncClient(timeout=TIMEOUT_IA) as c:
-        r = await c.post(url, json=payload)
+    limite = timeout or TIMEOUT_IA
+    async with httpx.AsyncClient(timeout=limite) as c:
+        # wait_for: o timeout do httpx vale por etapa (conectar, ler...);
+        # este é o teto da tentativa inteira.
+        r = await asyncio.wait_for(c.post(url, json=payload), timeout=limite)
         if r.status_code >= 400:
             # Mostra o motivo real em vez de um erro genérico — foi a falta
             # disso que escondeu o problema.
